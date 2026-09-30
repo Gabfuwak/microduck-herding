@@ -1,0 +1,48 @@
+# Unity-generated caches and local settings
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Build output
+/[Bb]uild/
+/[Bb]uilds/
+/*_BackUpThisFolder_ButDontShipItWithYourGame/
+/*_BurstDebugInformation_DoNotShip/
+
+# Generated IDE files
+/.vs/
+/.idea/
+/.vscode/
+/.gradle/
+/ExportedObj/
+/Consulo/
+/*.csproj
+/*.sln
+/*.slnx
+/*.suo
+/*.tmp
+/*.user
+/*.userprefs
+/*.pidb
+/*.booproj
+/*.svd
+/*.pdb
+/*.mdb
+/*.opendb
+/*.VC.db
+
+# Unity-generated asset data
+/Assets/AssetStoreTools*
+/Assets/AddressableAssetsData/*/*.bin*
+/Assets/StreamingAssets/aa/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Keep Assets, Packages, ProjectSettings, and their .meta files tracked.
