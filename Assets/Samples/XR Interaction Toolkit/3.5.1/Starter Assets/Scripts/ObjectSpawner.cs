@@ -5,10 +5,12 @@ using UnityEngine.XR.Interaction.Toolkit.Utilities;
 namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
 {
     /// <summary>
-    /// Behavior with an API for spawning objects from a given set of prefabs.
+    /// Spawns at most one live object per spawner from a given set of prefabs.
     /// </summary>
     public class ObjectSpawner : MonoBehaviour
     {
+        GameObject m_SpawnedObject;
+
         [SerializeField]
         [Tooltip("The camera that objects will face when spawned. If not set, defaults to the main camera.")]
         Camera m_CameraToFace;
@@ -197,16 +199,21 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
         /// </summary>
         /// <param name="spawnPoint">The world space position at which to spawn the object.</param>
         /// <param name="spawnNormal">The world space normal of the spawn surface.</param>
-        /// <returns>Returns <see langword="true"/> if the spawner successfully spawned an object. Otherwise returns
-        /// <see langword="false"/>, for instance if the spawn point is out of view of the camera.</returns>
+        /// <returns>Returns <see langword="true"/> if an object was spawned. Returns <see langword="false"/>
+        /// if the previous object is still alive or the spawn point is outside the permitted view.</returns>
         /// <remarks>
         /// The object selected to spawn is based on <see cref="spawnOptionIndex"/>. If the index is outside
         /// the range of <see cref="objectPrefabs"/>, this method will select a random prefab from the list to spawn.
         /// Otherwise, it will spawn the prefab at the index.
+        /// Destroying the previous object permits another spawn. The instance is registered before
+        /// <see cref="objectSpawned"/> is invoked, so reentrant requests cannot create duplicates.
         /// </remarks>
         /// <seealso cref="objectSpawned"/>
         public bool TrySpawnObject(Vector3 spawnPoint, Vector3 spawnNormal)
         {
+            if (m_SpawnedObject != null)
+                return false;
+
             if (m_OnlySpawnInView)
             {
                 var inViewMin = m_ViewportPeriphery;
@@ -222,6 +229,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
 
             var objectIndex = isSpawnOptionRandomized ? Random.Range(0, m_ObjectPrefabs.Count) : m_SpawnOptionIndex;
             var newObject = Instantiate(m_ObjectPrefabs[objectIndex]);
+            m_SpawnedObject = newObject;
             if (m_SpawnAsChildren)
                 newObject.transform.parent = transform;
 
@@ -260,12 +268,17 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
         /// The object selected to spawn is based on <see cref="spawnOptionIndex"/>. If the index is outside
         /// the range of <see cref="objectPrefabs"/>, this method will select a random prefab from the list to spawn.
         /// Otherwise, it will spawn the prefab at the index.
+        /// Requests are ignored while the previous spawned object is still alive.
         /// </remarks>
         /// <seealso cref="objectSpawned"/>
         public void SpawnObject(Vector3 spawnPoint, Vector3 spawnNormal)
         {
+            if (m_SpawnedObject != null)
+                return;
+
             if (!TrySpawnObject(spawnPoint, spawnNormal))
                 Debug.LogWarning("Could not spawn object.", this);
         }
+
     }
 }
