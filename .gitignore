@@ -6,12 +6,15 @@
 /[Uu]ser[Ss]ettings/
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
+/.utmp/
 
 # Build output
 /[Bb]uild/
 /[Bb]uilds/
 /*_BackUpThisFolder_ButDontShipItWithYourGame/
 /*_BurstDebugInformation_DoNotShip/
+/*.apk
+/*.aab
 
 # Generated IDE files
 /.vs/
@@ -39,6 +42,10 @@
 /Assets/AssetStoreTools*
 /Assets/AddressableAssetsData/*/*.bin*
 /Assets/StreamingAssets/aa/
+/Assets/Resources/PerformanceTestRunInfo.json
+/Assets/Resources/PerformanceTestRunInfo.json.meta
+/Assets/Resources/PerformanceTestRunSettings.json
+/Assets/Resources/PerformanceTestRunSettings.json.meta
 
 # OS files
 .DS_Store
