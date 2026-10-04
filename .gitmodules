@@ -1,0 +1,5 @@
+# Upstream source only; Unity-ready model assets belong in Assets/Robots/MicroDuck.
+# After cloning: git submodule update --init --recursive
+[submodule "External/microduck_rl"]
+	path = External/microduck_rl
+	url = https://github.com/pollen-robotics/microduck_rl.git

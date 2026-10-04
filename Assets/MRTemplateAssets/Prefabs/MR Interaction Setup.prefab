@@ -1917,7 +1917,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_CameraToFace: {fileID: 6484816944661230508}
   m_ObjectPrefabs:
-  - {fileID: 8218513764086100890, guid: 5b2893169b9ee6f49a2133bdca170147, type: 3}
+  - {fileID: 2774184874629296922, guid: 3854676da5ce52a7e8b6f5c64e753b29, type: 3}
   m_SpawnVisualizationPrefab: {fileID: 0}
   m_SpawnOptionIndex: 0
   m_OnlySpawnInView: 0
