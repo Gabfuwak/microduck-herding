@@ -258,6 +258,7 @@ GameObject:
   - component: {fileID: 658386445}
   - component: {fileID: 658386446}
   - component: {fileID: 658386447}
+  - component: {fileID: 658386448}
   m_Layer: 0
   m_Name: DesktopPlayer
   m_TagString: Untagged
@@ -337,6 +338,19 @@ MonoBehaviour:
   surfaceLayers:
     serializedVersion: 2
     m_Bits: 128
+--- !u!114 &658386448
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 658386443}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 39d7e1ccc258438d9d41eee095aacfa7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DesktopMovement
+  moveSpeed: 2
 --- !u!1 &939116944
 GameObject:
   m_ObjectHideFlags: 0
