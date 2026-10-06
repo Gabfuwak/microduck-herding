@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets;
 
 public sealed class DesktopSurfacePlacement : MonoBehaviour
@@ -7,17 +8,42 @@ public sealed class DesktopSurfacePlacement : MonoBehaviour
     [SerializeField] private Camera placementCamera;
     [SerializeField] private ObjectSpawner objectSpawner;
     [SerializeField] private LayerMask surfaceLayers;
+    [SerializeField] private Transform surfaceDot;
 
-    private void Update()
+    private void LateUpdate()
     {
-        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame)
+        Ray ray = placementCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        bool hasHit = Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, surfaceLayers, QueryTriggerInteraction.Ignore);
+        float distance = hasHit ? hit.distance : Mathf.Infinity;
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            PhysicsScene physicsScene = SceneManager.GetSceneAt(i).GetPhysicsScene();
+            if (physicsScene == Physics.defaultPhysicsScene)
+                continue;
+
+            if (physicsScene.Raycast(ray.origin, ray.direction, out RaycastHit sceneHit, distance, surfaceLayers, QueryTriggerInteraction.Ignore))
+            {
+                hit = sceneHit;
+                distance = hit.distance;
+                hasHit = true;
+            }
+        }
+
+        surfaceDot.gameObject.SetActive(hasHit);
+        if (!hasHit)
             return;
 
-        Ray ray = placementCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, surfaceLayers, QueryTriggerInteraction.Ignore))
+        surfaceDot.position = hit.point + hit.normal * 0.005f;
+        if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame)
             return;
 
         objectSpawner.cameraToFace = placementCamera;
         objectSpawner.TrySpawnObject(hit.point, hit.normal);
+    }
+
+    private void OnDisable()
+    {
+        if (surfaceDot != null)
+            surfaceDot.gameObject.SetActive(false);
     }
 }
