@@ -16,10 +16,11 @@ public sealed class DesktopMouseLook : MonoBehaviour
 
     private void Update()
     {
-        if (Mouse.current == null)
+        Mouse mouse = Mouse.current;
+        if (mouse == null)
             return;
 
-        Vector2 delta = Mouse.current.delta.ReadValue();
+        Vector2 delta = mouse.delta.ReadValue();
         transform.Rotate(0f, delta.x * sensitivity, 0f);
         pitch = Mathf.Clamp(pitch - delta.y * sensitivity, -85f, 85f);
         cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);

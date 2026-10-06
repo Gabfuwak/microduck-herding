@@ -3,12 +3,7 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 
-/// <summary>
-/// Assimp is used only to import robot meshes in the editor. Players use the saved
-/// Unity meshes, not runtime URDF import. The URDF package's desktop native plug-ins
-/// incorrectly enable Any Platform, including Android, and must not ship in players.
-/// Build filtering preserves editor import support without editing PackageCache.
-/// </summary>
+// The URDF package's desktop Assimp libraries are editor-only, despite its Any Platform defaults.
 public sealed class UrdfEditorPluginFilter : IPreprocessBuildWithReport
 {
     const string NativePluginRoot = "Packages/com.unity.robotics.urdf-importer/Runtime/UnityMeshImporter/Plugins/AssimpNet/Native/";

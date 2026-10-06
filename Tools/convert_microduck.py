@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
-"""Convert the pinned MicroDuck walk MJCF into a visual/import URDF.
+"""Convert the pinned MicroDuck full-collision MJCF into a Unity import URDF.
 
 Usage (from the Unity project root): python3 Tools/convert_microduck.py
+Then run Tools/MicroDuck/Rebuild Physics Prefab in Unity, outside Play mode.
+The same prefab spawns from desktop or XR: gravity, limited hinges, convex
+contacts and no motor drives. This is a passive PhysX ragdoll, not locomotion.
+Collision meshes are pre-baked during player builds; editor script reloads
+prepare the collision cache so spawning does not cook the CAD meshes.
 
 Source model: https://github.com/pollen-robotics/microduck_rl,
-  src/mjlab_microduck/robot/microduck/robot_walk.xml
+  src/mjlab_microduck/robot/microduck/robot_allcollisions.xml
 Hardware-design attribution: MicroDuck, https://github.com/pollen-robotics/microduck
 The source README licenses hardware design files under Creative Commons
 BY-SA-NC; this derived model and its copied meshes retain that attribution and
 license notice. Original Onshape design: https://cad.onshape.com/documents/804927696f06d877f3f1803e/w/5b75db19292e71970de02dee/e/ef6e972847fec8d82570b35e
 
-This intentionally scoped converter preserves MJCF SI transforms/inertials and
-mesh geoms; it is not a controller, dynamics, or simulation-parity export.
-MJCF actuators, sensors, sites, cameras, and world placement are omitted. A
-1 rad/s joint velocity is a conservative URDF-required fallback, not a source
-specification or physics-ready limit. Joint effort comes from chosen_actuator's
-±0.96 forcerange. Mesh scale is accepted only when omitted (MJCF default 1).
+This scoped converter preserves MJCF SI transforms/inertials and mesh geoms.
+Collision classes become ordinary URDF collisions; MuJoCo collision masks and
+actuator dynamics are not reproduced. Sensors, sites, cameras and world placement
+are omitted.
+URDF-required velocity 1 rad/s is a non-source fallback; the Unity ragdoll uses
+a 50 rad/s angular speed cap instead. Effort is chosen_actuator's ±0.96
+forcerange, with drives disabled in Unity. Mesh scale must be omitted (default 1).
 """
 
 from __future__ import annotations
@@ -26,7 +32,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
-SOURCE = PROJECT / "External/microduck_rl/src/mjlab_microduck/robot/microduck/robot_walk.xml"
+SOURCE = PROJECT / "External/microduck_rl/src/mjlab_microduck/robot/microduck/robot_allcollisions.xml"
 ASSET_DIR = SOURCE.parent / "assets"
 OUTPUT = PROJECT / "Assets/Robots/MicroDuck/microduck.urdf"
 MESH_OUTPUT = OUTPUT.parent / "Meshes"
@@ -210,8 +216,8 @@ def main() -> None:
         '<?xml version="1.0"?>',
         '<!-- Derived from MicroDuck hardware design, https://github.com/pollen-robotics/microduck -->',
         '<!-- Hardware design source license: Creative Commons BY-SA-NC (see microduck_rl README). -->',
-        '<!-- Source MJCF: https://github.com/pollen-robotics/microduck_rl/blob/main/src/mjlab_microduck/robot/microduck/robot_walk.xml -->',
-        '<!-- Visual/import geometry and retained collision geometry only; not controller/simulation parity. -->',
+        '<!-- Source MJCF: https://github.com/pollen-robotics/microduck_rl/blob/main/src/mjlab_microduck/robot/microduck/robot_allcollisions.xml -->',
+        '<!-- Full collision geometry; MuJoCo collision masks and actuator dynamics are not reproduced. -->',
         '<!-- Actuators, sensors, sites, cameras, and root world placement are omitted. -->',
         '<!-- Joint effort uses chosen_actuator +/-0.96; velocity 1.0 rad/s is a non-source URDF fallback, not physics-ready. -->',
         '<robot name="microduck">',

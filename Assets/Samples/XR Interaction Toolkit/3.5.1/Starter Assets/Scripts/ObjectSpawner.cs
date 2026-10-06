@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine.XR.Interaction.Toolkit.Utilities;
 
 namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
 {
@@ -228,24 +227,18 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets
             }
 
             var objectIndex = isSpawnOptionRandomized ? Random.Range(0, m_ObjectPrefabs.Count) : m_SpawnOptionIndex;
-            var newObject = Instantiate(m_ObjectPrefabs[objectIndex]);
-            m_SpawnedObject = newObject;
-            if (m_SpawnAsChildren)
-                newObject.transform.parent = transform;
-
-            newObject.transform.position = spawnPoint;
             EnsureFacingCamera();
 
             var facePosition = m_CameraToFace.transform.position;
             var forward = facePosition - spawnPoint;
-            BurstMathUtility.ProjectOnPlane(forward, spawnNormal, out var projectedForward);
-            newObject.transform.rotation = Quaternion.LookRotation(projectedForward, spawnNormal);
-
+            var projectedForward = Vector3.ProjectOnPlane(forward, spawnNormal);
+            var rotation = Quaternion.LookRotation(projectedForward, spawnNormal);
             if (m_ApplyRandomAngleAtSpawn)
-            {
-                var randomRotation = Random.Range(-m_SpawnAngleRange, m_SpawnAngleRange);
-                newObject.transform.Rotate(Vector3.up, randomRotation);
-            }
+                rotation *= Quaternion.AngleAxis(Random.Range(-m_SpawnAngleRange, m_SpawnAngleRange), Vector3.up);
+
+            var newObject = Instantiate(m_ObjectPrefabs[objectIndex], spawnPoint, rotation,
+                m_SpawnAsChildren ? transform : null);
+            m_SpawnedObject = newObject;
 
             if (m_SpawnVisualizationPrefab != null)
             {

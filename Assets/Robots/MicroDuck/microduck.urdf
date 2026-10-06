@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <!-- Derived from MicroDuck hardware design, https://github.com/pollen-robotics/microduck -->
 <!-- Hardware design source license: Creative Commons BY-SA-NC (see microduck_rl README). -->
-<!-- Source MJCF: https://github.com/pollen-robotics/microduck_rl/blob/main/src/mjlab_microduck/robot/microduck/robot_walk.xml -->
-<!-- Visual/import geometry and retained collision geometry only; not controller/simulation parity. -->
+<!-- Source MJCF: https://github.com/pollen-robotics/microduck_rl/blob/main/src/mjlab_microduck/robot/microduck/robot_allcollisions.xml -->
+<!-- Full collision geometry; MuJoCo collision masks and actuator dynamics are not reproduced. -->
 <!-- Actuators, sensors, sites, cameras, and root world placement are omitted. -->
 <!-- Joint effort uses chosen_actuator +/-0.96; velocity 1.0 rad/s is a non-source URDF fallback, not physics-ready. -->
 <robot name="microduck">
@@ -16,6 +16,7 @@
     <visual><geometry><mesh filename="Meshes/power_support.stl"/></geometry><origin xyz="0.004 0 -0.0175215" rpy="0 0 1.57079632679"/><material name="power_support_material"><color rgba="0.901961 0.901961 0.901961 1"/></material></visual>
     <collision><geometry><mesh filename="Meshes/power_support.stl"/></geometry><origin xyz="0.004 0 -0.0175215" rpy="0 0 1.57079632679"/></collision>
     <visual><geometry><mesh filename="Meshes/np_f970.stl"/></geometry><origin xyz="-0.0359693 0 -0.00385049" rpy="3.12413937147 0 -1.57079632679"/><material name="np_f970_material"><color rgba="0.901961 0.901961 0.901961 1"/></material></visual>
+    <collision><geometry><mesh filename="Meshes/np_f970.stl"/></geometry><origin xyz="-0.0359693 0 -0.00385049" rpy="3.12413937147 0 -1.57079632679"/></collision>
     <visual><geometry><mesh filename="Meshes/xl330.stl"/></geometry><origin xyz="0.006 -0.0175 0.0115" rpy="0 -1.57079632679 3.14159265359"/><material name="xl330_material"><color rgba="0.286275 0.286275 0.286275 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/left_shell.stl"/></geometry><origin xyz="0.004 0 -0.0175785" rpy="0 0 1.57079632679"/><material name="left_shell_material"><color rgba="0.8 0.8 0.8 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/seeed_bearing__configuration__22x16x4.stl"/></geometry><origin xyz="0.006 -0.0175 -0.005" rpy="0 0 0"/><material name="seeed_bearing__configuration__22x16x4_material"><color rgba="0.713725 0.760784 0.8 1"/></material></visual>
@@ -31,6 +32,7 @@
     <inertial><origin xyz="0.014815 1.6179e-08 -0.00829992" rpy="0 0 0"/><mass value="0.00618934"/><inertia ixx="8.60626e-07" ixy="1e-12" ixz="3.89882e-07" iyy="1.15753e-06" iyz="-1e-12" izz="6.51588e-07"/></inertial>
     <visual><geometry><mesh filename="Meshes/seeed_bearing__configuration__22x16x4.stl"/></geometry><origin xyz="0.021 0 -0.0185" rpy="1.57079632679 0 1.57079632679"/><material name="seeed_bearing__configuration__22x16x4_material"><color rgba="0.713725 0.760784 0.8 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/hip_l.stl"/></geometry><origin xyz="-0.0175 0 -0.0185" rpy="-1.57079632679 0 0"/><material name="hip_l_material"><color rgba="0.901961 0.901961 0.901961 1"/></material></visual>
+    <collision><geometry><mesh filename="Meshes/hip_l.stl"/></geometry><origin xyz="-0.0175 0 -0.0185" rpy="-1.57079632679 0 0"/></collision>
   </link>
   <link name="upper_leg_left">
     <inertial><origin xyz="0.006766 0.0228838 0.0134531" rpy="0 0 0"/><mass value="0.0482067"/><inertia ixx="1.68753e-05" ixy="-4.41852e-06" ixz="2.27982e-07" iyy="1.03691e-05" iyz="3.89298e-07" izz="1.98269e-05"/></inertial>
@@ -81,13 +83,16 @@
     <visual><geometry><mesh filename="Meshes/jaw_soft.stl"/></geometry><origin xyz="-0.0046 0 -0.0179996" rpy="1.57079632679 0 1.57079632679"/><material name="jaw_soft_material"><color rgba="0.85098 0.756863 0.866667 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/motor_support.stl"/></geometry><origin xyz="-0.0045 0 -0.018" rpy="1.57079632679 0 1.57079632679"/><material name="motor_support_material"><color rgba="0.262745 0.282353 0.301961 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/top_head_shell.stl"/></geometry><origin xyz="-0.0045 0 -0.018" rpy="1.57079632679 0 1.57079632679"/><material name="top_head_shell_material"><color rgba="0.901961 0.901961 0.901961 1"/></material></visual>
+    <collision><geometry><mesh filename="Meshes/top_head_shell.stl"/></geometry><origin xyz="-0.0045 0 -0.018" rpy="1.57079632679 0 1.57079632679"/></collision>
     <visual><geometry><mesh filename="Meshes/xl330.stl"/></geometry><origin xyz="0 0 0.0145" rpy="0 -1.57079632679 -1.57079632679"/><material name="xl330_material"><color rgba="0.286275 0.286275 0.286275 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/seeed_bearing__configuration_default.stl"/></geometry><origin xyz="0.0032 -0.04 -0.018" rpy="0 1.57079632679 1.57079632679"/><material name="seeed_bearing__configuration_default_material"><color rgba="0.713725 0.760784 0.8 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/elec_rpi_robot_hat_pcb.stl"/></geometry><origin xyz="0.02694 0.0289936 -0.0519" rpy="0 0 -1.57079632679"/><material name="elec_rpi_robot_hat_pcb_material"><color rgba="0.313725 0.486275 0.411765 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/soft_mouth_top.stl"/></geometry><origin xyz="-0.00420071 1.7776e-08 -0.0180814" rpy="1.57079632679 0 1.57079632679"/><material name="soft_mouth_top_material"><color rgba="0.85098 0.756863 0.866667 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/noenoeil.stl"/></geometry><origin xyz="-0.0045 -9.13778e-05 -0.0178" rpy="1.57079632679 0 1.57079632679"/><material name="noenoeil_material"><color rgba="0.262745 0.282353 0.301961 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/jaw.stl"/></geometry><origin xyz="-0.0045 0 -0.018" rpy="1.57079632679 0 1.57079632679"/><material name="jaw_material"><color rgba="0.980392 0.713725 0.00392157 1"/></material></visual>
+    <collision><geometry><mesh filename="Meshes/jaw.stl"/></geometry><origin xyz="-0.0045 0 -0.018" rpy="1.57079632679 0 1.57079632679"/></collision>
     <visual><geometry><mesh filename="Meshes/bottom_head_shell.stl"/></geometry><origin xyz="-0.0043 0 -0.018" rpy="1.57079632679 0 1.57079632679"/><material name="bottom_head_shell_material"><color rgba="0.980392 0.713725 0.00392157 1"/></material></visual>
+    <collision><geometry><mesh filename="Meshes/bottom_head_shell.stl"/></geometry><origin xyz="-0.0043 0 -0.018" rpy="1.57079632679 0 1.57079632679"/></collision>
     <visual><geometry><mesh filename="Meshes/m12_lens_holder.stl"/></geometry><origin xyz="0.0155 -9.13778e-05 -0.05558" rpy="-1.57079632679 0 -1.57079632679"/><material name="m12_lens_holder_material"><color rgba="0.262745 0.282353 0.301961 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/pcb__raspberry_pi_zero_2_w.stl"/></geometry><origin xyz="0.015435 -1.13778e-05 -0.06001" rpy="-1.57079632679 0 1.57079632679"/><material name="pcb__raspberry_pi_zero_2_w_material"><color rgba="0.498039 0.498039 0.498039 1"/></material></visual>
     <visual><geometry><mesh filename="Meshes/speaker.stl"/></geometry><origin xyz="0.01 -0.016786 0.0260226" rpy="1.57079632679 0 1.57079632679"/><material name="speaker_material"><color rgba="0.294118 0.290196 0.290196 1"/></material></visual>
@@ -102,6 +107,7 @@
   <link name="hip_l_2">
     <inertial><origin xyz="0.014815 1.6212e-08 -0.00829992" rpy="0 0 0"/><mass value="0.00618934"/><inertia ixx="8.60626e-07" ixy="1e-12" ixz="3.89882e-07" iyy="1.15753e-06" iyz="-1e-12" izz="6.51588e-07"/></inertial>
     <visual><geometry><mesh filename="Meshes/hip_l.stl"/></geometry><origin xyz="-0.0175 0 -0.0185" rpy="-1.57079632679 0 0"/><material name="hip_l_material"><color rgba="0.901961 0.901961 0.901961 1"/></material></visual>
+    <collision><geometry><mesh filename="Meshes/hip_l.stl"/></geometry><origin xyz="-0.0175 0 -0.0185" rpy="-1.57079632679 0 0"/></collision>
     <visual><geometry><mesh filename="Meshes/seeed_bearing__configuration__22x16x4.stl"/></geometry><origin xyz="0.025 0 -0.0185" rpy="1.57079632679 0 -1.57079632679"/><material name="seeed_bearing__configuration__22x16x4_material"><color rgba="0.713725 0.760784 0.8 1"/></material></visual>
   </link>
   <link name="upper_leg_right">
