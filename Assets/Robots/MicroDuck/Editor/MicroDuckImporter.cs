@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Unity.Robotics.UrdfImporter;
 using UnityEditor;
+using Unity.InferenceEngine;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -12,6 +13,19 @@ public static class MicroDuckImporter
 {
     public const string PrefabPath = "Assets/Robots/MicroDuck/MicroDuck.prefab";
     const string UrdfPath = "Assets/Robots/MicroDuck/microduck.urdf";
+    const string PolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_stand.onnx";
+    const string ContactMaterialPath = "Assets/Robots/MicroDuck/MicroDuckContact.physicMaterial";
+    static readonly string[] PolicyJointNames =
+    {
+        "left_hip_yaw", "left_hip_roll", "left_hip_pitch", "left_knee", "left_ankle",
+        "neck_pitch", "head_pitch", "head_yaw", "head_roll",
+        "right_hip_yaw", "right_hip_roll", "right_hip_pitch", "right_knee", "right_ankle",
+    };
+    static readonly float[] PolicyDefaultPose =
+    {
+        0f, -0.0873f, -0.4579f, -0.0049f, 0.4530f, 0.3491f, 0.3491f, 0f, 0f,
+        0f, 0.0873f, 0.4579f, 0.0049f, -0.4530f,
+    };
 
     [InitializeOnLoadMethod]
     static void Initialize() => EditorApplication.delayCall += BakeEditorCollisions;
@@ -75,22 +89,9 @@ public static class MicroDuckImporter
             foreach (var child in root.GetComponentsInChildren<Transform>(true))
                 child.gameObject.tag = "Untagged";
 
-            // Ground both geometry sets, with 2 mm clearance for contact generation.
-            var minimumY = float.PositiveInfinity;
+            ConfigureStanding(root);
             var filters = root.GetComponentsInChildren<MeshFilter>(true);
-            foreach (var filter in filters)
-            {
-                if (filter.sharedMesh == null)
-                    throw new InvalidOperationException($"Missing mesh on {filter.name}.");
-                foreach (var vertex in filter.sharedMesh.vertices)
-                    minimumY = Mathf.Min(minimumY, filter.transform.TransformPoint(vertex).y);
-            }
-            foreach (var collider in root.GetComponentsInChildren<MeshCollider>(true))
-                foreach (var vertex in collider.sharedMesh.vertices)
-                    minimumY = Mathf.Min(minimumY, collider.transform.TransformPoint(vertex).y);
-            if (float.IsInfinity(minimumY))
-                throw new InvalidOperationException("MicroDuck contains no visual vertices.");
-            robot.transform.localPosition = new Vector3(0f, -minimumY + 0.002f, 0f);
+            Ground(root);
 
             foreach (var renderer in root.GetComponentsInChildren<MeshRenderer>(true))
             {
@@ -118,6 +119,98 @@ public static class MicroDuckImporter
             EditorSceneManager.CloseScene(importScene, true);
             Selection.activeObject = previousSelection;
         }
+    }
+
+    [MenuItem("Tools/MicroDuck/Configure Standing Prefab")]
+    public static void ConfigureStandingPrefab()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Stop Play mode before configuring MicroDuck.");
+        var root = PrefabUtility.LoadPrefabContents(PrefabPath);
+        try
+        {
+            ConfigureStanding(root);
+            Ground(root);
+            if (PrefabUtility.SaveAsPrefabAsset(root, PrefabPath) == null)
+                throw new InvalidOperationException("Failed to save standing prefab.");
+            AssetDatabase.SaveAssets();
+            BakeEditorCollisions();
+            Debug.Log("MicroDuck standing policy configured.");
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(root);
+        }
+    }
+
+    static void ConfigureStanding(GameObject root)
+    {
+        var model = AssetDatabase.LoadAssetAtPath<ModelAsset>(PolicyPath);
+        if (model == null)
+            throw new InvalidOperationException("Import the standing ONNX model and Sentis package first.");
+        var source = new Robot(Path.GetFullPath(UrdfPath));
+        var bodies = root.GetComponentsInChildren<ArticulationBody>(true);
+        var trunk = Array.Find(bodies, body => body.isRoot);
+        if (trunk == null || bodies.Length != 15)
+            throw new InvalidOperationException("Standing requires the complete MicroDuck articulation.");
+        var controller = root.GetComponent<MicroDuckStandingPolicy>();
+        if (controller == null)
+            controller = root.AddComponent<MicroDuckStandingPolicy>();
+        using var serialized = new SerializedObject(controller);
+        serialized.FindProperty("model").objectReferenceValue = model;
+        serialized.FindProperty("root").objectReferenceValue = trunk;
+        var joints = serialized.FindProperty("joints");
+        joints.arraySize = PolicyJointNames.Length;
+        for (var i = 0; i < PolicyJointNames.Length; i++)
+        {
+            var joint = source.joints.Find(candidate => candidate.name == PolicyJointNames[i]);
+            var body = joint == null ? null : Array.Find(bodies, candidate => candidate.name == joint.child);
+            if (body == null)
+                throw new InvalidOperationException($"Missing policy joint {PolicyJointNames[i]}.");
+            var entry = joints.GetArrayElementAtIndex(i);
+            entry.FindPropertyRelative("body").objectReferenceValue = body;
+            entry.FindPropertyRelative("defaultPosition").floatValue = PolicyDefaultPose[i];
+            // Keep the URDF zero anchors while posing the links; matching them again would erase q.
+            body.matchAnchors = false;
+            body.transform.localRotation = body.parentAnchorRotation *
+                Quaternion.AngleAxis(PolicyDefaultPose[i] * Mathf.Rad2Deg, Vector3.right) *
+                Quaternion.Inverse(body.anchorRotation);
+            body.transform.localPosition = body.parentAnchorPosition -
+                body.transform.localRotation * body.anchorPosition;
+            body.jointFriction = 0.0048f;
+        }
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        var material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(ContactMaterialPath);
+        if (material == null)
+        {
+            material = new PhysicsMaterial("MicroDuckContact")
+            {
+                staticFriction = 1f, dynamicFriction = 1f, bounciness = 0f,
+                frictionCombine = PhysicsMaterialCombine.Maximum,
+                bounceCombine = PhysicsMaterialCombine.Minimum,
+            };
+            AssetDatabase.CreateAsset(material, ContactMaterialPath);
+        }
+        foreach (var collider in root.GetComponentsInChildren<Collider>(true))
+            collider.sharedMaterial = material;
+    }
+
+    static void Ground(GameObject root)
+    {
+        var minimumY = float.PositiveInfinity;
+        foreach (var filter in root.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (filter.sharedMesh == null)
+                throw new InvalidOperationException($"Missing mesh on {filter.name}.");
+            foreach (var vertex in filter.sharedMesh.vertices)
+                minimumY = Mathf.Min(minimumY, filter.transform.TransformPoint(vertex).y);
+        }
+        foreach (var collider in root.GetComponentsInChildren<MeshCollider>(true))
+            foreach (var vertex in collider.sharedMesh.vertices)
+                minimumY = Mathf.Min(minimumY, collider.transform.TransformPoint(vertex).y);
+        if (float.IsInfinity(minimumY))
+            throw new InvalidOperationException("MicroDuck contains no geometry.");
+        root.transform.Find("Links").localPosition += Vector3.up * (-minimumY + 0.002f);
     }
 
     static void PrepareMeshes()

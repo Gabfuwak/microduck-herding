@@ -3,10 +3,26 @@
 
 Usage (from the Unity project root): python3 Tools/convert_microduck.py
 Then run Tools/MicroDuck/Rebuild Physics Prefab in Unity, outside Play mode.
-The same prefab spawns from desktop or XR: gravity, limited hinges, convex
-contacts and no motor drives. This is a passive PhysX ragdoll, not locomotion.
+The same prefab spawns from desktop or XR with a free articulation root.
+MicroDuckStandingPolicy runs the published alpha_stand network through Sentis
+CPU at 50 Hz; physics runs at 200 Hz. Disable the component for a passive ragdoll.
+Tools/MicroDuck/Configure Standing Prefab updates an existing import without
+rebuilding meshes. The initial STAND2 pose and 14-joint order match upstream.
+The controller explicitly initializes reduced joint coordinates before inference;
+posing prefab transforms alone does not initialize Unity's articulation state.
+Observations: gyro(3), projected gravity(3), relative joint positions(14),
+joint velocities(14), previous actions(14), zero twist/head/body commands(13).
+Targets are default pose + action radians, with source torque limit 0.96 Nm.
+PhysX uses position-drive stiffness 0.55 and damping 0.053; MuJoCo armature,
+contact solver and BAM motor dynamics are not reproduced. Transfer is experimental.
 Collision meshes are pre-baked during player builds; editor script reloads
 prepare the collision cache so spawning does not cook the CAD meshes.
+
+Standing weights: pollen-robotics/microduck-policies, Apache-2.0 model card,
+revision 6677ec007142bbaf05123a468f6ae58d13808786, alpha_stand.onnx.
+https://huggingface.co/pollen-robotics/microduck-policies/tree/6677ec007142bbaf05123a468f6ae58d13808786
+SHA256: 1569268713e40deea795dd2922dba50d3621e15a872855408b6b1b125b1c094b.
+The exported graph includes observation normalization; do not normalize twice.
 
 Source model: https://github.com/pollen-robotics/microduck_rl,
   src/mjlab_microduck/robot/microduck/robot_allcollisions.xml
@@ -19,9 +35,9 @@ This scoped converter preserves MJCF SI transforms/inertials and mesh geoms.
 Collision classes become ordinary URDF collisions; MuJoCo collision masks and
 actuator dynamics are not reproduced. Sensors, sites, cameras and world placement
 are omitted.
-URDF-required velocity 1 rad/s is a non-source fallback; the Unity ragdoll uses
+URDF-required velocity 1 rad/s is a non-source fallback; Unity uses
 a 50 rad/s angular speed cap instead. Effort is chosen_actuator's ±0.96
-forcerange, with drives disabled in Unity. Mesh scale must be omitted (default 1).
+forcerange. Mesh scale must be omitted (default 1).
 """
 
 from __future__ import annotations
