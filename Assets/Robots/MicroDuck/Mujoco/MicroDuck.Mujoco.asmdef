@@ -1,0 +1,9 @@
+{
+  "name": "MicroDuck.Mujoco",
+  "references": [
+    "Mujoco.Runtime",
+    "Unity.InferenceEngine",
+    "Unity.InputSystem"
+  ],
+  "allowUnsafeCode": true
+}
