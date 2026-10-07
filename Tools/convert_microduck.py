@@ -4,24 +4,34 @@
 Usage (from the Unity project root): python3 Tools/convert_microduck.py
 Then run Tools/MicroDuck/Rebuild Physics Prefab in Unity, outside Play mode.
 The same prefab spawns from desktop or XR with a free articulation root.
-MicroDuckStandingPolicy runs the published alpha_stand network through Sentis
-CPU at 50 Hz; physics runs at 200 Hz. Disable the component for a passive ragdoll.
-Tools/MicroDuck/Configure Standing Prefab updates an existing import without
+MicroDuckPolicyController runs published standing/walking policies through Sentis
+CPU at 50 Hz; physics runs at 200 Hz. Zero velocity selects the standing policy;
+nonzero velocity selects walking without resetting previous-action history.
+MicroDuckWalkDemo waits five simulation seconds after spawn, then requests
+0.3 m/s forward forever, with zero lateral speed and turn rate. It has no
+navigation or edge detection: use a sufficiently large floor for the demo.
+Disable the demo to stand only; disable the policy controller for a ragdoll.
+SetVelocityCommand(forward, left, yawRate) accepts robot-frame m/s and rad/s.
+Tools/MicroDuck/Configure Locomotion Prefab updates an existing import without
 rebuilding meshes. The initial STAND2 pose and 14-joint order match upstream.
 The controller explicitly initializes reduced joint coordinates before inference;
 posing prefab transforms alone does not initialize Unity's articulation state.
 Observations: gyro(3), projected gravity(3), relative joint positions(14),
-joint velocities(14), previous actions(14), zero twist/head/body commands(13).
+joint velocities(14), previous actions(14), twist/head/body commands(13).
 Targets are default pose + action radians, with source torque limit 0.96 Nm.
 PhysX uses position-drive stiffness 0.55 and damping 0.053; MuJoCo armature,
 contact solver and BAM motor dynamics are not reproduced. Transfer is experimental.
+An isolated 20-second PhysX rollout fell; sustained walking is not validated.
+XR spawning uses the same prefab/controller, but headset execution and performance
+remain untested. Enable the XR rig and disable DesktopPlayer before a headset build.
 Collision meshes are pre-baked during player builds; editor script reloads
 prepare the collision cache so spawning does not cook the CAD meshes.
 
-Standing weights: pollen-robotics/microduck-policies, Apache-2.0 model card,
-revision 6677ec007142bbaf05123a468f6ae58d13808786, alpha_stand.onnx.
+Policy weights: pollen-robotics/microduck-policies, Apache-2.0 model card,
+revision 6677ec007142bbaf05123a468f6ae58d13808786.
 https://huggingface.co/pollen-robotics/microduck-policies/tree/6677ec007142bbaf05123a468f6ae58d13808786
-SHA256: 1569268713e40deea795dd2922dba50d3621e15a872855408b6b1b125b1c094b.
+alpha_stand.onnx SHA256: 1569268713e40deea795dd2922dba50d3621e15a872855408b6b1b125b1c094b.
+alpha_walking.onnx SHA256: e36332d383997d51401897734cd3e79cf5038406feddb18b4d57ecfb141daa6c.
 The exported graph includes observation normalization; do not normalize twice.
 
 Source model: https://github.com/pollen-robotics/microduck_rl,

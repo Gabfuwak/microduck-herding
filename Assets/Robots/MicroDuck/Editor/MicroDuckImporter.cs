@@ -13,7 +13,8 @@ public static class MicroDuckImporter
 {
     public const string PrefabPath = "Assets/Robots/MicroDuck/MicroDuck.prefab";
     const string UrdfPath = "Assets/Robots/MicroDuck/microduck.urdf";
-    const string PolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_stand.onnx";
+    const string StandingPolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_stand.onnx";
+    const string WalkingPolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_walking.onnx";
     const string ContactMaterialPath = "Assets/Robots/MicroDuck/MicroDuckContact.physicMaterial";
     static readonly string[] PolicyJointNames =
     {
@@ -89,7 +90,7 @@ public static class MicroDuckImporter
             foreach (var child in root.GetComponentsInChildren<Transform>(true))
                 child.gameObject.tag = "Untagged";
 
-            ConfigureStanding(root);
+            ConfigurePolicies(root);
             var filters = root.GetComponentsInChildren<MeshFilter>(true);
             Ground(root);
 
@@ -121,21 +122,21 @@ public static class MicroDuckImporter
         }
     }
 
-    [MenuItem("Tools/MicroDuck/Configure Standing Prefab")]
-    public static void ConfigureStandingPrefab()
+    [MenuItem("Tools/MicroDuck/Configure Locomotion Prefab")]
+    public static void ConfigureLocomotionPrefab()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
             throw new InvalidOperationException("Stop Play mode before configuring MicroDuck.");
         var root = PrefabUtility.LoadPrefabContents(PrefabPath);
         try
         {
-            ConfigureStanding(root);
+            ConfigurePolicies(root);
             Ground(root);
             if (PrefabUtility.SaveAsPrefabAsset(root, PrefabPath) == null)
-                throw new InvalidOperationException("Failed to save standing prefab.");
+                throw new InvalidOperationException("Failed to save locomotion prefab.");
             AssetDatabase.SaveAssets();
             BakeEditorCollisions();
-            Debug.Log("MicroDuck standing policy configured.");
+            Debug.Log("MicroDuck locomotion policies and walking demo configured.");
         }
         finally
         {
@@ -143,21 +144,25 @@ public static class MicroDuckImporter
         }
     }
 
-    static void ConfigureStanding(GameObject root)
+    static void ConfigurePolicies(GameObject root)
     {
-        var model = AssetDatabase.LoadAssetAtPath<ModelAsset>(PolicyPath);
-        if (model == null)
-            throw new InvalidOperationException("Import the standing ONNX model and Sentis package first.");
+        var standing = AssetDatabase.LoadAssetAtPath<ModelAsset>(StandingPolicyPath);
+        var walking = AssetDatabase.LoadAssetAtPath<ModelAsset>(WalkingPolicyPath);
+        if (standing == null || walking == null)
+            throw new InvalidOperationException("Import both ONNX policies and the Sentis package first.");
         var source = new Robot(Path.GetFullPath(UrdfPath));
         var bodies = root.GetComponentsInChildren<ArticulationBody>(true);
         var trunk = Array.Find(bodies, body => body.isRoot);
         if (trunk == null || bodies.Length != 15)
-            throw new InvalidOperationException("Standing requires the complete MicroDuck articulation.");
-        var controller = root.GetComponent<MicroDuckStandingPolicy>();
+            throw new InvalidOperationException("Locomotion requires the complete MicroDuck articulation.");
+        var controller = root.GetComponent<MicroDuckPolicyController>();
         if (controller == null)
-            controller = root.AddComponent<MicroDuckStandingPolicy>();
+            controller = root.AddComponent<MicroDuckPolicyController>();
+        if (root.GetComponent<MicroDuckWalkDemo>() == null)
+            root.AddComponent<MicroDuckWalkDemo>();
         using var serialized = new SerializedObject(controller);
-        serialized.FindProperty("model").objectReferenceValue = model;
+        serialized.FindProperty("standingModel").objectReferenceValue = standing;
+        serialized.FindProperty("walkingModel").objectReferenceValue = walking;
         serialized.FindProperty("root").objectReferenceValue = trunk;
         var joints = serialized.FindProperty("joints");
         joints.arraySize = PolicyJointNames.Length;

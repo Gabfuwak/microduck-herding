@@ -1599,6 +1599,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7083051922389033350}
   - component: {fileID: 7049505626276217519}
+  - component: {fileID: 1162321231388312969}
   m_Layer: 0
   m_Name: MicroDuck
   m_TagString: Untagged
@@ -1633,8 +1634,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fd40bd216c1a49f393ecbc04a3d97b59, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckStandingPolicy
-  model: {fileID: 5022602860645237092, guid: d75ce2cfc0964d1aa91a3020fbf82d72, type: 3}
+  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckPolicyController
+  standingModel: {fileID: 5022602860645237092, guid: d75ce2cfc0964d1aa91a3020fbf82d72, type: 3}
+  walkingModel: {fileID: 5022602860645237092, guid: 8c4d9901b7f2420a9b522998d4aa813e, type: 3}
   root: {fileID: 192543430374651586}
   joints:
   - body: {fileID: 8765290161535292594}
@@ -1668,6 +1670,18 @@ MonoBehaviour:
   stiffness: 0.55
   damping: 0.053
   torqueLimit: 0.96
+--- !u!114 &1162321231388312969
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2774184874629296922}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cb9357f2849467fbbf90255c2ddc698, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckWalkDemo
 --- !u!1 &2824222765445244634
 GameObject:
   m_ObjectHideFlags: 0
