@@ -1,0 +1,28 @@
+{
+  "physx": {
+    "rows": 4001,
+    "policy_samples": 1001,
+    "contact_points": 127251,
+    "maximum_policy_position_error_rad": 1.299999998760626e-07,
+    "maximum_policy_velocity_error_rad_s": 0.0,
+    "maximum_action_history_error": 0.0,
+    "maximum_projected_gravity_error": 2.5245687795827365e-07,
+    "maximum_gyro_frame_error_rad_s": 1.3035110015824358e-06,
+    "maximum_up_dot_error": 2.961452196803549e-07,
+    "maximum_inference_error": 1.908694152730206e-06,
+    "finite": true
+  },
+  "mujoco": {
+    "rows": 4001,
+    "policy_samples": 1001,
+    "contact_points": 18173,
+    "maximum_policy_position_error_rad": 2.322727432613192e-08,
+    "maximum_policy_velocity_error_rad_s": 2.3828747952592266e-07,
+    "maximum_action_history_error": 0.0,
+    "maximum_projected_gravity_error": 2.9659850908636542e-08,
+    "maximum_gyro_frame_error_rad_s": 1.0484854540138144e-07,
+    "maximum_up_dot_error": 0.0,
+    "maximum_inference_error": 0.0,
+    "finite": true
+  }
+}

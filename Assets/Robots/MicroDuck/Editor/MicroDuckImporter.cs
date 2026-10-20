@@ -1,6 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Xml;
 using Unity.Robotics.UrdfImporter;
 using UnityEditor;
 using Unity.InferenceEngine;
@@ -13,43 +14,16 @@ public static class MicroDuckImporter
 {
     public const string PrefabPath = "Assets/Robots/MicroDuck/MicroDuck.prefab";
     const string UrdfPath = "Assets/Robots/MicroDuck/microduck.urdf";
+    const string NativeAssetPath = "Assets/Robots/MicroDuck/MuJoCo";
     const string StandingPolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_stand.onnx";
     const string WalkingPolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_walking.onnx";
-    const string ContactMaterialPath = "Assets/Robots/MicroDuck/MicroDuckContact.physicMaterial";
-    static readonly string[] PolicyJointNames =
-    {
-        "left_hip_yaw", "left_hip_roll", "left_hip_pitch", "left_knee", "left_ankle",
-        "neck_pitch", "head_pitch", "head_yaw", "head_roll",
-        "right_hip_yaw", "right_hip_roll", "right_hip_pitch", "right_knee", "right_ankle",
-    };
-    static readonly float[] PolicyDefaultPose =
-    {
-        0f, -0.0873f, -0.4579f, -0.0049f, 0.4530f, 0.3491f, 0.3491f, 0f, 0f,
-        0f, 0.0873f, 0.4579f, 0.0049f, -0.4530f,
-    };
 
-    [InitializeOnLoadMethod]
-    static void Initialize() => EditorApplication.delayCall += BakeEditorCollisions;
-
-    static void BakeEditorCollisions()
+    [MenuItem("Tools/MicroDuck/Rebuild MuJoCo Prefab")]
+    public static void RebuildMuJoCoPrefab()
     {
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
-        if (prefab == null)
-            return;
-        var baked = new HashSet<Mesh>();
-        foreach (var collider in prefab.GetComponentsInChildren<MeshCollider>(true))
-            if (baked.Add(collider.sharedMesh))
-                Physics.BakeMesh(collider.sharedMesh.GetEntityId(), true, collider.cookingOptions);
-    }
-
-    [MenuItem("Tools/MicroDuck/Rebuild Physics Prefab")]
-    public static void RebuildPhysicsPrefab()
-    {
-        if (EditorApplication.isPlayingOrWillChangePlaymode)
-            throw new InvalidOperationException("Stop Play mode before importing MicroDuck.");
+        RequireEditMode();
         if (!File.Exists(UrdfPath))
             throw new FileNotFoundException("Run python3 Tools/convert_microduck.py first.", UrdfPath);
-
         var previousScene = SceneManager.GetActiveScene();
         var previousSelection = Selection.activeObject;
         var importScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
@@ -57,7 +31,7 @@ public static class MicroDuckImporter
         Selection.activeObject = null;
         try
         {
-            // STL data and URDF frames are both ROS coordinates; no additional mesh-axis correction.
+            // URDF is only a CAD visual importer. MuJoCo alone owns the final prefab's physics.
             var settings = new ImportSettings
             {
                 chosenAxis = ImportSettings.axisType.yAxis,
@@ -73,29 +47,19 @@ public static class MicroDuckImporter
                         robot = importer.Current;
             }
             if (robot == null)
-                throw new InvalidOperationException("The URDF importer did not create MicroDuck.");
-
-            ConfigurePhysics(robot);
+                throw new InvalidOperationException("The URDF visual importer did not create MicroDuck.");
             foreach (var behaviour in robot.GetComponentsInChildren<MonoBehaviour>(true))
                 Object.DestroyImmediate(behaviour);
             foreach (var child in robot.GetComponentsInChildren<Transform>(true))
                 if (child != null && child.name == "Plugins")
                     Object.DestroyImmediate(child.gameObject);
-
             var root = new GameObject("MicroDuck");
             robot.transform.SetParent(root.transform, false);
             robot.name = "Links";
-            robot.transform.localPosition = Vector3.zero;
-            robot.transform.localRotation = Quaternion.identity;
             foreach (var child in root.GetComponentsInChildren<Transform>(true))
                 child.gameObject.tag = "Untagged";
-
             ConfigurePolicies(root);
-            var filters = root.GetComponentsInChildren<MeshFilter>(true);
-            Ground(root);
-
             foreach (var renderer in root.GetComponentsInChildren<MeshRenderer>(true))
-            {
                 foreach (var material in renderer.sharedMaterials)
                 {
                     if (material == null || material.shader == null || !material.shader.isSupported)
@@ -103,16 +67,9 @@ public static class MicroDuckImporter
                     material.SetFloat("_Metallic", 0f);
                     material.SetFloat("_Smoothness", 0.25f);
                     EditorUtility.SetDirty(material);
+                    AssetDatabase.SaveAssetIfDirty(material);
                 }
-            }
-            var prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
-            if (prefab == null)
-                throw new InvalidOperationException("Failed to save MicroDuck prefab.");
-            AssetDatabase.SaveAssets();
-            BakeEditorCollisions();
-            Debug.Log($"MicroDuck physics import complete: {filters.Length} mesh parts, " +
-                $"{root.GetComponentsInChildren<ArticulationBody>().Length} bodies, " +
-                $"{root.GetComponentsInChildren<Collider>().Length} colliders. {PrefabPath}");
+            Save(root);
         }
         finally
         {
@@ -125,18 +82,12 @@ public static class MicroDuckImporter
     [MenuItem("Tools/MicroDuck/Configure Locomotion Prefab")]
     public static void ConfigureLocomotionPrefab()
     {
-        if (EditorApplication.isPlayingOrWillChangePlaymode)
-            throw new InvalidOperationException("Stop Play mode before configuring MicroDuck.");
+        RequireEditMode();
         var root = PrefabUtility.LoadPrefabContents(PrefabPath);
         try
         {
             ConfigurePolicies(root);
-            Ground(root);
-            if (PrefabUtility.SaveAsPrefabAsset(root, PrefabPath) == null)
-                throw new InvalidOperationException("Failed to save locomotion prefab.");
-            AssetDatabase.SaveAssets();
-            BakeEditorCollisions();
-            Debug.Log("MicroDuck locomotion policies and walking demo configured.");
+            Save(root);
         }
         finally
         {
@@ -144,17 +95,34 @@ public static class MicroDuckImporter
         }
     }
 
+    static void RequireEditMode()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Stop Play mode before importing MicroDuck.");
+    }
+
+    static void Save(GameObject root)
+    {
+        if (PrefabUtility.SaveAsPrefabAsset(root, PrefabPath) == null)
+            throw new InvalidOperationException("Failed to save MicroDuck MuJoCo prefab.");
+        Debug.Log($"MicroDuck MuJoCo prefab configured: {root.GetComponentsInChildren<MeshFilter>(true).Length} CAD parts; no PhysX bodies or colliders. {PrefabPath}");
+    }
+
     static void ConfigurePolicies(GameObject root)
     {
         var standing = AssetDatabase.LoadAssetAtPath<ModelAsset>(StandingPolicyPath);
         var walking = AssetDatabase.LoadAssetAtPath<ModelAsset>(WalkingPolicyPath);
-        if (standing == null || walking == null)
-            throw new InvalidOperationException("Import both ONNX policies and the Sentis package first.");
-        var source = new Robot(Path.GetFullPath(UrdfPath));
-        var bodies = root.GetComponentsInChildren<ArticulationBody>(true);
-        var trunk = Array.Find(bodies, body => body.isRoot);
-        if (trunk == null || bodies.Length != 15)
-            throw new InvalidOperationException("Locomotion requires the complete MicroDuck articulation.");
+        var scene = AssetDatabase.LoadAssetAtPath<TextAsset>(NativeAssetPath + "/scene.xml");
+        if (standing == null || walking == null || scene == null)
+            throw new InvalidOperationException("Import the policies and run python3 Tools/setup_mujoco_unity.py first.");
+        // Child joints must be removed before their parent articulations.
+        var articulations = root.GetComponentsInChildren<ArticulationBody>(true);
+        for (var i = articulations.Length - 1; i >= 0; --i)
+            Object.DestroyImmediate(articulations[i]);
+        foreach (var collider in root.GetComponentsInChildren<Collider>(true))
+            Object.DestroyImmediate(collider);
+        foreach (var body in root.GetComponentsInChildren<Rigidbody>(true))
+            Object.DestroyImmediate(body);
         var controller = root.GetComponent<MicroDuckPolicyController>();
         if (controller == null)
             controller = root.AddComponent<MicroDuckPolicyController>();
@@ -163,59 +131,47 @@ public static class MicroDuckImporter
         using var serialized = new SerializedObject(controller);
         serialized.FindProperty("standingModel").objectReferenceValue = standing;
         serialized.FindProperty("walkingModel").objectReferenceValue = walking;
-        serialized.FindProperty("root").objectReferenceValue = trunk;
-        var joints = serialized.FindProperty("joints");
-        joints.arraySize = PolicyJointNames.Length;
-        for (var i = 0; i < PolicyJointNames.Length; i++)
+        serialized.FindProperty("sceneXml").objectReferenceValue = scene;
+        var assets = serialized.FindProperty("nativeAssets");
+        var files = Directory.GetFiles(NativeAssetPath + "/assets", "*.bytes").OrderBy(path => path, StringComparer.Ordinal).ToArray();
+        assets.arraySize = files.Length;
+        for (var i = 0; i < files.Length; ++i)
         {
-            var joint = source.joints.Find(candidate => candidate.name == PolicyJointNames[i]);
-            var body = joint == null ? null : Array.Find(bodies, candidate => candidate.name == joint.child);
-            if (body == null)
-                throw new InvalidOperationException($"Missing policy joint {PolicyJointNames[i]}.");
-            var entry = joints.GetArrayElementAtIndex(i);
-            entry.FindPropertyRelative("body").objectReferenceValue = body;
-            entry.FindPropertyRelative("defaultPosition").floatValue = PolicyDefaultPose[i];
-            // Keep the URDF zero anchors while posing the links; matching them again would erase q.
-            body.matchAnchors = false;
-            body.transform.localRotation = body.parentAnchorRotation *
-                Quaternion.AngleAxis(PolicyDefaultPose[i] * Mathf.Rad2Deg, Vector3.right) *
-                Quaternion.Inverse(body.anchorRotation);
-            body.transform.localPosition = body.parentAnchorPosition -
-                body.transform.localRotation * body.anchorPosition;
-            body.jointFriction = 0.0048f;
+            var entry = assets.GetArrayElementAtIndex(i);
+            entry.FindPropertyRelative("filename").stringValue = "assets/" + Path.GetFileNameWithoutExtension(files[i]);
+            var asset = AssetDatabase.LoadAssetAtPath<TextAsset>(files[i]);
+            if (asset == null)
+                throw new InvalidOperationException($"Missing MuJoCo mesh bytes: {files[i]}");
+            entry.FindPropertyRelative("data").objectReferenceValue = asset;
+        }
+        var xml = new XmlDocument();
+        xml.LoadXml(scene.text);
+        var nativeBodies = xml.SelectNodes("/mujoco/worldbody//body");
+        var bodies = serialized.FindProperty("bodies");
+        bodies.arraySize = nativeBodies.Count;
+        for (var i = 0; i < nativeBodies.Count; ++i)
+        {
+            var name = nativeBodies[i].Attributes["name"].Value;
+            var path = name;
+            for (var parent = nativeBodies[i].ParentNode; parent.Name == "body"; parent = parent.ParentNode)
+                path = parent.Attributes["name"].Value + "/" + path;
+            var link = root.transform.Find("Links/" + path);
+            if (link == null)
+                throw new InvalidOperationException($"Missing CAD link hierarchy: Links/{path}.");
+            var entry = bodies.GetArrayElementAtIndex(i);
+            entry.FindPropertyRelative("name").stringValue = name;
+            entry.FindPropertyRelative("transform").objectReferenceValue = link;
         }
         serialized.ApplyModifiedPropertiesWithoutUndo();
-        var material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(ContactMaterialPath);
-        if (material == null)
+        // Preview the real native initial configuration, not a separately maintained posed skeleton.
+        try
         {
-            material = new PhysicsMaterial("MicroDuckContact")
-            {
-                staticFriction = 1f, dynamicFriction = 1f, bounciness = 0f,
-                frictionCombine = PhysicsMaterialCombine.Maximum,
-                bounceCombine = PhysicsMaterialCombine.Minimum,
-            };
-            AssetDatabase.CreateAsset(material, ContactMaterialPath);
+            controller.InitializeSimulation();
         }
-        foreach (var collider in root.GetComponentsInChildren<Collider>(true))
-            collider.sharedMaterial = material;
-    }
-
-    static void Ground(GameObject root)
-    {
-        var minimumY = float.PositiveInfinity;
-        foreach (var filter in root.GetComponentsInChildren<MeshFilter>(true))
+        finally
         {
-            if (filter.sharedMesh == null)
-                throw new InvalidOperationException($"Missing mesh on {filter.name}.");
-            foreach (var vertex in filter.sharedMesh.vertices)
-                minimumY = Mathf.Min(minimumY, filter.transform.TransformPoint(vertex).y);
+            controller.ReleaseSimulation();
         }
-        foreach (var collider in root.GetComponentsInChildren<MeshCollider>(true))
-            foreach (var vertex in collider.sharedMesh.vertices)
-                minimumY = Mathf.Min(minimumY, collider.transform.TransformPoint(vertex).y);
-        if (float.IsInfinity(minimumY))
-            throw new InvalidOperationException("MicroDuck contains no geometry.");
-        root.transform.Find("Links").localPosition += Vector3.up * (-minimumY + 0.002f);
     }
 
     static void PrepareMeshes()
@@ -241,7 +197,6 @@ public static class MicroDuckImporter
                     }
                     else
                     {
-                        // Replacing a loaded mesh asset invalidates references in cached STL prefabs.
                         EditorUtility.CopySerialized(meshes[i], mesh);
                         Object.DestroyImmediate(meshes[i]);
                         EditorUtility.SetDirty(mesh);
@@ -260,61 +215,8 @@ public static class MicroDuckImporter
             }
         }
         AssetDatabase.SaveAssets();
-        // Mesh saves refresh native objects; reload wrappers before the URDF importer reads them.
         foreach (var stl in stls)
             AssetDatabase.ImportAsset(StlAssetPostProcessor.GetPrefabAssetPath(stl),
                 ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
-    }
-
-    static void ConfigurePhysics(GameObject robot)
-    {
-        var source = new Robot(Path.GetFullPath(UrdfPath));
-        var bodies = robot.GetComponentsInChildren<ArticulationBody>(true);
-        if (bodies.Length != source.links.Count)
-            throw new InvalidOperationException("MicroDuck articulation does not match the URDF links.");
-        foreach (var body in bodies)
-        {
-            var link = source.links.Find(candidate => candidate.name == body.name);
-            if (link?.inertial == null)
-                throw new InvalidOperationException($"Missing source inertia for {body.name}.");
-            var inertia = link.inertial.inertia;
-            var matrix = new Matrix3x3(new[]
-            {
-                (float)inertia.ixx, (float)inertia.ixy, (float)inertia.ixz,
-                (float)inertia.iyy, (float)inertia.iyz, (float)inertia.izz,
-            });
-            matrix.DiagonalizeRealSymmetric(out var values, out _);
-            if (values.x <= 0f || values.y <= 0f || values.z <= 0f)
-                throw new InvalidOperationException($"Non-positive inertia for {body.name}.");
-            // The importer clamps tiny CAD inertias; keep its basis but restore source eigenvalues.
-            body.automaticCenterOfMass = false;
-            body.automaticInertiaTensor = false;
-            body.inertiaTensor = new Vector3(values.y, values.z, values.x);
-            if (body.isRoot)
-                body.immovable = false;
-            body.useGravity = true;
-            body.linearDamping = 0f;
-            body.angularDamping = 0f;
-            body.jointFriction = 0f;
-            body.maxAngularVelocity = 50f;
-            body.solverIterations = 16;
-            body.solverVelocityIterations = 4;
-            body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-            var drive = body.xDrive;
-            drive.stiffness = 0f;
-            drive.damping = 0f;
-            drive.forceLimit = 0f;
-            body.xDrive = drive;
-        }
-        foreach (var collider in robot.GetComponentsInChildren<Collider>(true))
-        {
-            if (collider is not MeshCollider mesh || mesh.sharedMesh == null)
-                throw new InvalidOperationException($"Missing dynamic collision mesh on {collider.name}.");
-            mesh.convex = true;
-            using var asset = new SerializedObject(mesh.sharedMesh);
-            asset.FindProperty("m_PreBakeConvexCollisionMesh").boolValue = true;
-            asset.ApplyModifiedPropertiesWithoutUndo();
-            collider.contactOffset = 0.001f;
-        }
     }
 }

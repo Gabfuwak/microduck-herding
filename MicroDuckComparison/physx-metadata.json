@@ -1,0 +1,1402 @@
+{
+  "engine": "physx",
+  "schema_version": 1,
+  "engine_version": "6000.6.3f1",
+  "coordinate_frame": "ROS x forward,y left,z up; quaternion [w,x,y,z]. All trajectory fields are already ROS.",
+  "dt": 0.005,
+  "control_period": 0.02,
+  "duration": 20,
+  "joint_names": [
+    "left_hip_yaw",
+    "left_hip_roll",
+    "left_hip_pitch",
+    "left_knee",
+    "left_ankle",
+    "neck_pitch",
+    "head_pitch",
+    "head_yaw",
+    "head_roll",
+    "right_hip_yaw",
+    "right_hip_roll",
+    "right_hip_pitch",
+    "right_knee",
+    "right_ankle"
+  ],
+  "body_names": [
+    "trunk_base",
+    "bearing_roll",
+    "hip_l_2",
+    "upper_leg_right",
+    "leg_2",
+    "ankle_right",
+    "neck",
+    "neck_pitch",
+    "yaw_roll_motion",
+    "jaw_soft",
+    "yaw2roll",
+    "hip_l",
+    "upper_leg_left",
+    "leg",
+    "ankle_left"
+  ],
+  "default_pose": [
+    0.0,
+    -0.0873,
+    -0.4579,
+    -0.0049,
+    0.453,
+    0.3491,
+    0.3491,
+    0.0,
+    0.0,
+    0.0,
+    0.0873,
+    0.4579,
+    0.0049,
+    -0.453
+  ],
+  "initial_root_position": [
+    0.0,
+    0.0,
+    0.119182773
+  ],
+  "initial_root_quaternion": [
+    1.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "initial_joint_position": [
+    0.0,
+    -0.0873,
+    -0.4579,
+    -0.0049,
+    0.453,
+    0.3491,
+    0.3491,
+    0.0,
+    0.0,
+    0.0,
+    0.0873,
+    0.4579,
+    0.0049,
+    -0.453
+  ],
+  "units": {
+    "position": "m",
+    "angle": "rad",
+    "velocity": "m/s,rad/s",
+    "acceleration": "m/s^2,rad/s^2",
+    "joint_force": "N*m for these revolute joints",
+    "impulse": "N*s"
+  },
+  "model_hashes": {
+    "standing_onnx_sha256": "1569268713e40deea795dd2922dba50d3621e15a872855408b6b1b125b1c094b",
+    "walking_onnx_sha256": "e36332d383997d51401897734cd3e79cf5038406feddb18b4d57ecfb141daa6c",
+    "prefab_sha256": "980d3d92835eb5884625e2fe6c680bcd63e113267d39921408dffefa6c8951ea"
+  },
+  "bodies": [
+    {
+      "name": "trunk_base",
+      "mass": 0.199224,
+      "local_center_of_mass": [
+        -0.0226332,
+        -2.70828E-05,
+        0.00280064
+      ],
+      "inertia_diagonal_unity_axes": [
+        9.852653E-05,
+        0.000140798831,
+        0.000145931655
+      ],
+      "inertia_rotation_ros": [
+        0.6375307,
+        0.3042578,
+        -0.303305238,
+        -0.639521539
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 0.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "bearing_roll",
+      "mass": 0.0230406,
+      "local_center_of_mass": [
+        -8.8E-11,
+        0.00099414,
+        0.0168917
+      ],
+      "inertia_diagonal_unity_axes": [
+        2.32413186E-06,
+        3.41988743E-06,
+        4.1964E-06
+      ],
+      "inertia_rotation_ros": [
+        1.644719E-13,
+        1.56996174E-13,
+        0.723355,
+        0.690476358
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "hip_l_2",
+      "mass": 0.00618934,
+      "local_center_of_mass": [
+        0.014815,
+        1.6212E-08,
+        -0.00829992
+      ],
+      "inertia_diagonal_unity_axes": [
+        3.52458358E-07,
+        1.15753085E-06,
+        1.1597549E-06
+      ],
+      "inertia_rotation_ros": [
+        0.227244213,
+        -0.2272994,
+        0.6695976,
+        0.6695776
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "upper_leg_right",
+      "mass": 0.0482067,
+      "local_center_of_mass": [
+        -0.006766,
+        0.0228838,
+        0.0134531
+      ],
+      "inertia_diagonal_unity_axes": [
+        8.117992E-06,
+        1.91080453E-05,
+        1.98452635E-05
+      ],
+      "inertia_rotation_ros": [
+        -0.154085949,
+        0.6713854,
+        0.174329624,
+        0.7036394
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "leg_2",
+      "mass": 0.0215844,
+      "local_center_of_mass": [
+        -0.0318937,
+        -1.52E-10,
+        -0.00953505
+      ],
+      "inertia_diagonal_unity_axes": [
+        1.913783E-06,
+        4.580537E-06,
+        5.25055975E-06
+      ],
+      "inertia_rotation_ros": [
+        0.6988719,
+        0.10760133,
+        -0.1076013,
+        -0.698872
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "ankle_right",
+      "mass": 0.0300251,
+      "local_center_of_mass": [
+        0.00615539,
+        -0.0137482,
+        -0.0156566
+      ],
+      "inertia_diagonal_unity_axes": [
+        5.90343825E-06,
+        7.743216E-06,
+        1.11622467E-05
+      ],
+      "inertia_rotation_ros": [
+        0.6928338,
+        0.0166147314,
+        -0.0159701258,
+        -0.720729053
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "neck",
+      "mass": 0.0368414,
+      "local_center_of_mass": [
+        0.0,
+        -0.025,
+        0.0141665
+      ],
+      "inertia_diagonal_unity_axes": [
+        3.12693987E-06,
+        1.63707E-05,
+        1.72925E-05
+      ],
+      "inertia_rotation_ros": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "neck_pitch",
+      "mass": 0.00572,
+      "local_center_of_mass": [
+        -6.533E-09,
+        0.0116641,
+        -0.0145
+      ],
+      "inertia_diagonal_unity_axes": [
+        9.668551E-07,
+        5.12111E-07,
+        1.09186E-06
+      ],
+      "inertia_rotation_ros": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "yaw_roll_motion",
+      "mass": 0.0486,
+      "local_center_of_mass": [
+        -0.000166657,
+        -0.00500964,
+        0.0178065
+      ],
+      "inertia_diagonal_unity_axes": [
+        6.88780528E-06,
+        8.117877E-06,
+        9.65511754E-06
+      ],
+      "inertia_rotation_ros": [
+        -0.364647418,
+        0.6114033,
+        0.4827936,
+        0.510028064
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "jaw_soft",
+      "mass": 0.188766,
+      "local_center_of_mass": [
+        0.00460523,
+        0.00120047,
+        -0.0324761
+      ],
+      "inertia_diagonal_unity_axes": [
+        0.000149460669,
+        0.000254265731,
+        0.000321067579
+      ],
+      "inertia_rotation_ros": [
+        0.0138637368,
+        -0.0133170877,
+        0.6926229,
+        0.7210437
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "yaw2roll",
+      "mass": 0.0230406,
+      "local_center_of_mass": [
+        -8.8E-11,
+        0.00099414,
+        0.0168917
+      ],
+      "inertia_diagonal_unity_axes": [
+        2.32413186E-06,
+        3.41988743E-06,
+        4.1964E-06
+      ],
+      "inertia_rotation_ros": [
+        1.644719E-13,
+        1.56996174E-13,
+        0.723355,
+        0.690476358
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "hip_l",
+      "mass": 0.00618934,
+      "local_center_of_mass": [
+        0.014815,
+        1.6179E-08,
+        -0.00829992
+      ],
+      "inertia_diagonal_unity_axes": [
+        3.52458358E-07,
+        1.15753085E-06,
+        1.1597549E-06
+      ],
+      "inertia_rotation_ros": [
+        0.227244213,
+        -0.2272994,
+        0.6695976,
+        0.6695776
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "upper_leg_left",
+      "mass": 0.0482067,
+      "local_center_of_mass": [
+        0.006766,
+        0.0228838,
+        0.0134531
+      ],
+      "inertia_diagonal_unity_axes": [
+        8.117992E-06,
+        1.91080453E-05,
+        1.98452635E-05
+      ],
+      "inertia_rotation_ros": [
+        0.174329624,
+        0.7036394,
+        -0.154085949,
+        0.6713854
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "leg",
+      "mass": 0.0215844,
+      "local_center_of_mass": [
+        -1.52E-10,
+        0.0318937,
+        -0.00953505
+      ],
+      "inertia_diagonal_unity_axes": [
+        1.913783E-06,
+        4.580537E-06,
+        5.25055975E-06
+      ],
+      "inertia_rotation_ros": [
+        1.41241273E-07,
+        -2.17461089E-08,
+        0.152171224,
+        0.988354146
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    },
+    {
+      "name": "ankle_left",
+      "mass": 0.0300246,
+      "local_center_of_mass": [
+        -0.00615738,
+        -0.0137483,
+        -0.0156586
+      ],
+      "inertia_diagonal_unity_axes": [
+        5.903341E-06,
+        7.743186E-06,
+        1.1162273E-05
+      ],
+      "inertia_rotation_ros": [
+        0.72076,
+        -0.015909,
+        0.01654936,
+        -0.692804635
+      ],
+      "linear_damping": 0.0,
+      "angular_damping": 0.0,
+      "use_gravity": true,
+      "immovable": false,
+      "solver_iterations": 6,
+      "solver_velocity_iterations": 1,
+      "sleep_threshold": 0.005,
+      "max_angular_velocity": 7.0,
+      "max_joint_velocity": 100.0,
+      "collision_detection_mode": "ContinuousSpeculative"
+    }
+  ],
+  "joints": [
+    {
+      "name": "left_hip_yaw",
+      "body": "yaw2roll",
+      "default_position": 0.0,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -0.436332315,
+      "upper_limit": 0.5235988,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        0.006,
+        0.0175,
+        -0.00500000268
+      ],
+      "parent_anchor_rotation": [
+        -0.5,
+        0.49999997,
+        0.49999997,
+        -0.5
+      ]
+    },
+    {
+      "name": "left_hip_roll",
+      "body": "hip_l",
+      "default_position": -0.0873,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -0.383972436,
+      "upper_limit": 0.383972436,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -7.450581E-09,
+        0.0165000074,
+        0.0125000151
+      ],
+      "parent_anchor_rotation": [
+        1.00000012,
+        -1.1920929E-07,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "left_hip_pitch",
+      "body": "upper_leg_left",
+      "default_position": -0.4579,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        0.0250000171,
+        -2.9802333E-08,
+        -0.01850003
+      ],
+      "parent_anchor_rotation": [
+        0.7071069,
+        -5.96046448E-08,
+        -8.940697E-08,
+        -0.7071068
+      ]
+    },
+    {
+      "name": "left_knee",
+      "body": "leg",
+      "default_position": -0.0049,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        0.0220000427,
+        0.0357771777,
+        -0.003999964
+      ],
+      "parent_anchor_rotation": [
+        -0.5000002,
+        0.50000006,
+        0.5000002,
+        -0.50000006
+      ]
+    },
+    {
+      "name": "left_ankle",
+      "body": "ankle_left",
+      "default_position": 0.453,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        1.19209275E-07,
+        0.0420000739,
+        -0.0260000862
+      ],
+      "parent_anchor_rotation": [
+        -0.707106948,
+        0.707106948,
+        -7.395266E-08,
+        1.54542956E-08
+      ]
+    },
+    {
+      "name": "neck_pitch",
+      "body": "neck",
+      "default_position": 0.3491,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.04719758,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        0.026,
+        0.0145,
+        0.0324215069
+      ],
+      "parent_anchor_rotation": [
+        -4.37113918E-08,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "name": "head_pitch",
+      "body": "neck_pitch",
+      "default_position": 0.3491,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -1.95405165E-15,
+        -0.0500000268,
+        -2.98023224E-08
+      ],
+      "parent_anchor_rotation": [
+        -0.7071069,
+        0.707106769,
+        -5.02429578E-15,
+        2.51214768E-15
+      ]
+    },
+    {
+      "name": "head_yaw",
+      "body": "yaw_roll_motion",
+      "default_position": 0.0,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -2.96705961,
+      "upper_limit": 2.96705961,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -5.950192E-10,
+        0.0186931584,
+        -0.0144999679
+      ],
+      "parent_anchor_rotation": [
+        3.55271368E-15,
+        -4.37113954E-08,
+        -1.0,
+        -8.940697E-08
+      ]
+    },
+    {
+      "name": "head_roll",
+      "body": "jaw_soft",
+      "default_position": 0.0,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -0.436332315,
+      "upper_limit": 0.436332315,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -0.0179000236,
+        3.445893E-08,
+        0.0145000508
+      ],
+      "parent_anchor_rotation": [
+        0.5,
+        0.5000001,
+        -0.5,
+        0.49999994
+      ]
+    },
+    {
+      "name": "right_hip_yaw",
+      "body": "bearing_roll",
+      "default_position": 0.0,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -0.5235988,
+      "upper_limit": 0.436332315,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        0.006,
+        -0.0175,
+        -0.00500000268
+      ],
+      "parent_anchor_rotation": [
+        -0.5,
+        0.49999997,
+        0.49999997,
+        -0.5
+      ]
+    },
+    {
+      "name": "right_hip_roll",
+      "body": "hip_l_2",
+      "default_position": 0.0873,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -0.383972436,
+      "upper_limit": 0.383972436,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -7.450581E-09,
+        0.0165000074,
+        0.0125000151
+      ],
+      "parent_anchor_rotation": [
+        1.01455742E-08,
+        -1.01455742E-08,
+        1.00000012,
+        -1.1920929E-07
+      ]
+    },
+    {
+      "name": "right_hip_pitch",
+      "body": "upper_leg_right",
+      "default_position": 0.4579,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        0.0250000563,
+        3.35276233E-08,
+        -0.0184999984
+      ],
+      "parent_anchor_rotation": [
+        0.707106948,
+        0.0,
+        0.0,
+        -0.707106948
+      ]
+    },
+    {
+      "name": "right_knee",
+      "body": "leg_2",
+      "default_position": 0.0049,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -0.0220000744,
+        0.03577717,
+        -0.00399997132
+      ],
+      "parent_anchor_rotation": [
+        -0.7071069,
+        0.707107,
+        4.21468478E-08,
+        4.21468478E-08
+      ]
+    },
+    {
+      "name": "right_ankle",
+      "body": "ankle_right",
+      "default_position": -0.453,
+      "stiffness": 0.55,
+      "damping": 0.053,
+      "force_limit": 0.96,
+      "lower_limit": -1.57079637,
+      "upper_limit": 1.57079637,
+      "friction": 0.0048,
+      "drive_type": "Force",
+      "anchor_position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "anchor_rotation": [
+        0.707106769,
+        0.707106769,
+        0.0,
+        0.0
+      ],
+      "parent_anchor_position": [
+        -0.0420001261,
+        -8.6136744E-08,
+        -0.02600009
+      ],
+      "parent_anchor_rotation": [
+        0.5,
+        -0.5,
+        -0.50000006,
+        0.50000006
+      ]
+    }
+  ],
+  "colliders": [
+    {
+      "name": "power_support_0",
+      "entity_id": "40294:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.004,
+        0.0,
+        0.101661272
+      ],
+      "quaternion": [
+        0.7071068,
+        0.0,
+        0.0,
+        0.7071068
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "power_support_0",
+      "vertex_count": 38496
+    },
+    {
+      "name": "np_f970_0",
+      "entity_id": "40301:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        -0.0359693,
+        0.0,
+        0.115332283
+      ],
+      "quaternion": [
+        0.00617061136,
+        0.7070799,
+        -0.7070799,
+        -0.00617061136
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "np_f970_0",
+      "vertex_count": 62910
+    },
+    {
+      "name": "hip_l_0",
+      "entity_id": "40434:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.003999996,
+        -6.664172E-05,
+        0.103208557
+      ],
+      "quaternion": [
+        -0.0308554731,
+        0.706433356,
+        -0.706433356,
+        -0.0308553465
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "hip_l_0",
+      "vertex_count": 62910
+    },
+    {
+      "name": "leg_0",
+      "entity_id": "40511:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        -0.0224886574,
+        0.006677186,
+        0.0261562765
+      ],
+      "quaternion": [
+        -0.6814606,
+        -0.1887097,
+        0.1285753,
+        0.6953192
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "leg_0",
+      "vertex_count": 44328
+    },
+    {
+      "name": "sole_right_0",
+      "entity_id": "40541:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.0220158361,
+        0.005982062,
+        0.0363907665
+      ],
+      "quaternion": [
+        0.7064335,
+        0.0308552422,
+        -0.0308554545,
+        0.7064335
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "sole_right_0",
+      "vertex_count": 47664
+    },
+    {
+      "name": "top_head_shell_0",
+      "entity_id": "40688:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.008997299,
+        1.5180558E-07,
+        0.22728157
+      ],
+      "quaternion": [
+        0.7071066,
+        0.0,
+        1.1920929E-07,
+        0.7071068
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "top_head_shell_0",
+      "vertex_count": 48360
+    },
+    {
+      "name": "jaw_0",
+      "entity_id": "40695:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.008997299,
+        1.5180558E-07,
+        0.22728157
+      ],
+      "quaternion": [
+        0.7071066,
+        0.0,
+        1.1920929E-07,
+        0.7071068
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "jaw_0",
+      "vertex_count": 29754
+    },
+    {
+      "name": "bottom_head_shell_0",
+      "entity_id": "40702:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.008997293,
+        1.5180558E-07,
+        0.227481559
+      ],
+      "quaternion": [
+        0.7071066,
+        0.0,
+        1.1920929E-07,
+        0.7071068
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "bottom_head_shell_0",
+      "vertex_count": 62910
+    },
+    {
+      "name": "hip_l_0",
+      "entity_id": "40883:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.00399999972,
+        6.663054E-05,
+        0.103208564
+      ],
+      "quaternion": [
+        0.706433356,
+        -0.0308554787,
+        0.0308553521,
+        0.706433356
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "hip_l_0",
+      "vertex_count": 62910
+    },
+    {
+      "name": "leg_0",
+      "entity_id": "40960:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.0170733854,
+        -0.004998127,
+        0.0453402027
+      ],
+      "quaternion": [
+        -0.6814608,
+        0.188709944,
+        0.12857531,
+        -0.6953189
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "leg_0",
+      "vertex_count": 44328
+    },
+    {
+      "name": "sole_left_0",
+      "entity_id": "40990:256",
+      "type": "MeshCollider",
+      "layer": 0,
+      "contact_offset": 0.01,
+      "trigger": false,
+      "material": "MicroDuckContact",
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "bounciness": 0.0,
+      "friction_combine": "Maximum",
+      "bounce_combine": "Minimum",
+      "position": [
+        0.0220156685,
+        -0.005982071,
+        0.03639093
+      ],
+      "quaternion": [
+        -0.706433535,
+        0.0308555849,
+        -0.0308550317,
+        -0.706433058
+      ],
+      "convex": true,
+      "cooking_options": "CookForFasterSimulation, EnableMeshCleaning, WeldColocatedVertices, UseFastMidphase",
+      "mesh": "sole_left_0",
+      "vertex_count": 47364
+    }
+  ],
+  "ground": {
+    "name": "MicroDuckComparison_Floor",
+    "entity_id": "40276:256",
+    "type": "BoxCollider",
+    "layer": 0,
+    "contact_offset": 0.01,
+    "trigger": false,
+    "material": "Unity default (null shared material)",
+    "static_friction": null,
+    "dynamic_friction": null,
+    "bounciness": null,
+    "friction_combine": null,
+    "bounce_combine": null,
+    "position": [
+      0.0,
+      0.0,
+      -0.05
+    ],
+    "quaternion": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "size_unity_axes": [
+      40.0,
+      0.1,
+      40.0
+    ]
+  },
+  "settings": {
+    "gravity": [
+      0.0,
+      0.0,
+      -9.81
+    ],
+    "default_contact_offset": 0.01,
+    "default_solver_iterations": 6,
+    "default_solver_velocity_iterations": 1,
+    "default_sleep_threshold": 0.005,
+    "simulation_mode": "isolated PhysicsScene manually stepped",
+    "policy_backend": "Unity Inference Engine CPU",
+    "inference_assembly_version": "2.6.1.0"
+  },
+  "metric_limitations": [
+    "Private PhysX solver internals and exact native PhysX SDK version are not exposed.",
+    "JointForce/driveForce/jointAcceleration are raw public reduced-coordinate properties; unset coordinates yield null.",
+    "Contacts are native Physics.ContactEvent per-point world impulses and separations; impulse/dt is step-average, not instantaneous force.",
+    "Root/body velocities are world center-of-mass velocities; root accelerations and acceleration_fd are backward differences.",
+    "Inertia diagonals retain Unity principal-axis ordering; their rotation is separately recorded in ROS.",
+    "Timings are offline desktop Editor instrumentation, not headset performance."
+  ],
+  "synchronization": "Actual prefab OnEnable initial inference at t0; actual demo and controller FixedUpdate every .005s before manual simulation. Command switches at n1000; controller internally updates every4 substeps. Observations are last consumed input."
+}

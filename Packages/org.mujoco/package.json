@@ -1,0 +1,26 @@
+{
+  "name": "org.mujoco",
+  "displayName": "MuJoCo",
+  "version": "3.15.0",
+  "description": "Raw MuJoCo C bindings for Unity",
+  "dependencies": {},
+  "author": {
+    "name": "Google DeepMind",
+    "email": "mujoco@deepmind.com",
+    "url": "https://mujoco.org/"
+  },
+  "changelogUrl": "https://mujoco.readthedocs.io/en/latest/changelog.html",
+  "documentationUrl": "https://mujoco.readthedocs.io/en/latest/unity.html",
+  "license": "Apache-2.0",
+  "licensesUrl": "https://github.com/google-deepmind/mujoco/blob/main/LICENSE",
+  "hideInEditor": false,
+  "mujocoSource": {
+    "repository": "https://github.com/google-deepmind/mujoco.git",
+    "tag": "3.15.0",
+    "commit": "9ea3cdfcae93bf2cc4dc0e1a1627c5a39a1e06e5",
+    "unityPackage": "unity/",
+    "localChanges": [
+      "raw bindings only; omit runtime components, editor integration, tests, and automatic binary retriever"
+    ]
+  }
+}

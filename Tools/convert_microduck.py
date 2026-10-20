@@ -1,31 +1,83 @@
 #!/usr/bin/env python3
-"""Convert the pinned MicroDuck full-collision MJCF into a Unity import URDF.
+"""Convert the pinned MicroDuck full-collision MJCF into Unity CAD import data.
 
-Usage (from the Unity project root): python3 Tools/convert_microduck.py
-Then run Tools/MicroDuck/Rebuild Physics Prefab in Unity, outside Play mode.
-The same prefab spawns from desktop or XR with a free articulation root.
-MicroDuckPolicyController runs published standing/walking policies through Sentis
-CPU at 50 Hz; physics runs at 200 Hz. Zero velocity selects the standing policy;
-nonzero velocity selects walking without resetting previous-action history.
-MicroDuckWalkDemo waits five simulation seconds after spawn, then requests
-0.3 m/s forward forever, with zero lateral speed and turn rate. It has no
-navigation or edge detection: use a sufficiently large floor for the demo.
-Disable the demo to stand only; disable the policy controller for a ragdoll.
-SetVelocityCommand(forward, left, yawRate) accepts robot-frame m/s and rad/s.
-Tools/MicroDuck/Configure Locomotion Prefab updates an existing import without
-rebuilding meshes. The initial STAND2 pose and 14-joint order match upstream.
-The controller explicitly initializes reduced joint coordinates before inference;
-posing prefab transforms alone does not initialize Unity's articulation state.
-Observations: gyro(3), projected gravity(3), relative joint positions(14),
+Setup (from the Unity project root):
+  python3 Tools/convert_microduck.py
+  python3 Tools/setup_mujoco_unity.py
+  python3 Tools/build_mujoco_android.py
+Then run Tools/MicroDuck/Rebuild MuJoCo Prefab in Unity, outside Play mode.
+Tools/MicroDuck/Configure Locomotion Prefab cuts an existing CAD prefab over
+without reimporting its meshes. The URDF supplies only Unity visual geometry;
+the configured prefab has no ArticulationBody, Rigidbody or PhysX colliders.
+
+MicroDuckPolicyController owns one native MuJoCo model/data pair per duck.
+The expanded pinned source MJCF and binary STL TextAssets load through VFS,
+including native inertias, collision masks, friction, armature, joint damping,
+and position actuators. MuJoCo runs at 200 Hz; Sentis CPU inference runs at 50 Hz.
+The free root and STAND2 joint coordinates initialize explicitly before inference.
+Zero velocity selects standing; nonzero velocity selects walking without
+resetting previous-action history. The exported graph already normalizes input.
+Observations: local gyro(3), projected gravity(3), relative joint positions(14),
 joint velocities(14), previous actions(14), twist/head/body commands(13).
-Targets are default pose + action radians, with source torque limit 0.96 Nm.
-PhysX uses position-drive stiffness 0.55 and damping 0.053; MuJoCo armature,
-contact solver and BAM motor dynamics are not reproduced. Transfer is experimental.
-An isolated 20-second PhysX rollout fell; sustained walking is not validated.
-XR spawning uses the same prefab/controller, but headset execution and performance
-remain untested. Enable the XR rig and disable DesktopPlayer before a headset build.
-Collision meshes are pre-baked during player builds; editor script reloads
-prepare the collision cache so spawning does not cook the CAD meshes.
+Gyro observations use the source imu_ang_vel sensor, not mjOBJ_BODY's inertial
+frame. Projected gravity uses the native root link frame.
+The last ten command slots remain zero. Targets are default pose + action radians;
+the MJCF retains source kp 0.55, joint damping 0.053, armature 0.0018 and ±0.96 Nm.
+Unity CAD link poses come only from MuJoCo body poses, using the existing
+ROS→Unity basis (-y,z,x), not the official component importer's (x,z,y) basis.
+
+MicroDuckWalkDemo waits five simulation seconds, then requests 0.3 m/s forward
+forever with zero lateral speed and turn rate. SetVelocityCommand(forward, left,
+yawRate) accepts robot-frame m/s and rad/s; it does not prescribe stride length.
+Disable the demo to stand only. Disabling the controller releases its native
+world and freezes the rendered pose; re-enabling creates a fresh initial state.
+XR and desktop use the same prefab. Its spawn pose anchors native coordinates,
+with world gravity expressed in that frame. MicroDuckSurfaces imports enabled,
+non-trigger static/kinematic BoxColliders and MeshColliders on surface layers
+7 (AR planes) and 30 (XR Simulation), from the spawn scene and isolated physics
+scenes. There is no implicit training floor: only captured geometry can support
+the duck. Lower tracked floors are included, not only the selected tabletop.
+Mesh triangles become separate 2 cm-thick prisms, preserving concave gaps and
+finite edges; boxes retain their transformed dimensions. Readable meshes update
+in place. Editor-only XR Simulation meshes can also be captured without enabling
+Read/Write on imported assets; non-readable player meshes and unsupported
+collider shapes warn and are omitted. Moving dynamic PhysX rigidbodies are not
+coupled to MuJoCo. Geometry is polled every 0.25 simulation seconds; a changed
+surface recompiles the native world while preserving integration state, policy
+workers, previous actions and control cadence. No navigation or fall recovery.
+Keep the spawn anchor at unit world scale.
+Before bounded surfaces were introduced, a 20-second isolated Unity rollout
+(five seconds standing, fifteen walking) on the training plane
+stayed upright: 2.47 mm standing drift, 1.888 m forward travel, 0.126 m/s average.
+Spawner pose mapping, tilted gravity, destroy/respawn and cleanup also passed;
+999 policy samples matched native IMU/gravity references within 3e-8.
+Evidence: Library/MuJoCoUnity/migration-smoke-result.json and its JSONL trace.
+This does not establish sustained stability or validate the Unity cutover on Quest.
+The bounded-surface Unity smoke used a translated/yawed spawn and mutable
+two-triangle tabletop mesh above a separate lower-floor box. It passed native
+table support (root height 0.116 m), edge departure (0.291 m forward travel),
+and lower-floor contact (lowest root height -0.555 m). Concave open-center gaps
+and disabled support surfaces also allowed falls. Mesh boundary recompilation
+preserved time, joint coordinates, velocities and actuator controls exactly.
+Evidence: Library/MuJoCoUnity/surface-smoke-result.json. This Editor smoke does
+not establish headset performance or sustained policy stability.
+
+MuJoCo runtime and official raw C# bindings are pinned to 3.15.0, commit
+9ea3cdfcae93bf2cc4dc0e1a1627c5a39a1e06e5. setup_mujoco_unity.py vendors only
+MujocoLib and its runtime assembly in Packages/org.mujoco, installs the
+SHA-256-verified official Linux x86_64 library, and bundles the native model
+assets. Unity component/import/export integration is deliberately excluded.
+Setup reruns remove obsolete integration and preserve retained Unity asset GUIDs.
+The Linux plugin is Editor/Linux Standalone only; the Android ARM64 plugin is
+Assets/Plugins/Android/arm64-v8a/libmujoco.so, API 34, static C++ runtime, 16 KiB
+ELF alignment, built with Unity's version-matched NDK. Native notices are in
+Assets/StreamingAssets/NativeLicenses/MuJoCo and the embedded package LICENSE.
+  python3 Tools/smoke_mujoco_android.py [--serial ADB_SERIAL]
+The ADB smoke loads the Android library and simulates a drop for 1,000 x 0.005s;
+it stages/removes only its own /data/local/tmp files without reinstalling the game.
+That native smoke passed on Quest 3S; it is not a Unity IL2CPP/policy headset test.
+Android provenance is in Library/MuJoCoAndroid; Linux setup provenance is in
+Library/MuJoCoUnity. Enable the XR rig and disable DesktopPlayer for headset builds.
 
 Policy weights: pollen-robotics/microduck-policies, Apache-2.0 model card,
 revision 6677ec007142bbaf05123a468f6ae58d13808786.
@@ -41,13 +93,11 @@ The source README licenses hardware design files under Creative Commons
 BY-SA-NC; this derived model and its copied meshes retain that attribution and
 license notice. Original Onshape design: https://cad.onshape.com/documents/804927696f06d877f3f1803e/w/5b75db19292e71970de02dee/e/ef6e972847fec8d82570b35e
 
-This scoped converter preserves MJCF SI transforms/inertials and mesh geoms.
-Collision classes become ordinary URDF collisions; MuJoCo collision masks and
-actuator dynamics are not reproduced. Sensors, sites, cameras and world placement
-are omitted.
-URDF-required velocity 1 rad/s is a non-source fallback; Unity uses
-a 50 rad/s angular speed cap instead. Effort is chosen_actuator's ±0.96
-forcerange. Mesh scale must be omitted (default 1).
+This CAD converter preserves MJCF SI transforms/inertials and mesh geoms.
+Its URDF omits collision masks, actuators, sensors, sites, cameras and world
+placement; the separate native MJCF retains the physics and sensor definitions.
+URDF-required velocity 1 rad/s and effort ±0.96 are import metadata only and do
+not constrain the MuJoCo runtime. Mesh scale must be omitted (default 1).
 """
 
 from __future__ import annotations

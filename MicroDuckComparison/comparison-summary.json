@@ -1,0 +1,310 @@
+{
+  "description": "Measured PhysX trajectory versus matched MuJoCo simulation. Both panels render recorded body poses with source CAD visuals; the right panel is not PhysX re-simulation or Unity camera footage.",
+  "sample_count_per_engine": 4001,
+  "video_frames": 1000,
+  "video_fps": 50,
+  "video_duration_s": 20.0,
+  "mujoco": {
+    "first_unstable_time_s": null,
+    "first_fall_time_s": null,
+    "fall_definition": "up_dot < 0.5 or root height < 0.08m",
+    "unstable_definition": "up_dot < 0.8 or root height < 0.08m",
+    "standing_max_drift_m": 0.0033966656700360714,
+    "walking_forward_distance_m": 1.8907832756476208,
+    "walking_average_forward_speed_m_s": 0.12605221837650807,
+    "walking_lateral_distance_m": -0.28036996559677285,
+    "minimum_height_m": 0.11372139497594586,
+    "minimum_up_dot": 0.9968192311344602,
+    "final_root": {
+      "position": [
+        1.8932085494589648,
+        -0.2806735957769211,
+        0.11901065517345719
+      ],
+      "quaternion": [
+        0.9821754798048598,
+        -0.030698654872182925,
+        -0.0064727826633908985,
+        -0.18532949723053932
+      ],
+      "linear_velocity": [
+        0.06055459507680346,
+        -0.19933039422826615,
+        -0.05644745156447272
+      ],
+      "angular_velocity": [
+        0.42902578115264906,
+        -0.3342934648751283,
+        -0.17237183289434832
+      ],
+      "linear_acceleration": [
+        -0.8025217953652477,
+        -0.8754703440258083,
+        0.0501101394277767
+      ],
+      "angular_acceleration": [
+        36.21183050563577,
+        -11.960503451677196,
+        33.37133352858055
+      ],
+      "up_dot": 0.998031391347262,
+      "height": 0.11901065517345719,
+      "forward_distance": 1.8932085494589648,
+      "lateral_distance": -0.2806735957769211
+    },
+    "joint_tracking": {
+      "left_hip_yaw": {
+        "tracking_rmse_rad": 0.05722397567211682,
+        "walking_tracking_rmse_rad": 0.06599425925234216,
+        "max_abs_tracking_error_rad": 0.17572203041955356,
+        "max_abs_drive_torque_Nm": 0.09664711673075446
+      },
+      "left_hip_roll": {
+        "tracking_rmse_rad": 0.1691693246874616,
+        "walking_tracking_rmse_rad": 0.1660656437046795,
+        "max_abs_tracking_error_rad": 0.39780336890807744,
+        "max_abs_drive_torque_Nm": 0.21879185289944258
+      },
+      "left_hip_pitch": {
+        "tracking_rmse_rad": 0.1516495486206554,
+        "walking_tracking_rmse_rad": 0.1737516255627688,
+        "max_abs_tracking_error_rad": 0.36674007380145535,
+        "max_abs_drive_torque_Nm": 0.20170704059080044
+      },
+      "left_knee": {
+        "tracking_rmse_rad": 0.40987714405174847,
+        "walking_tracking_rmse_rad": 0.46509354236535705,
+        "max_abs_tracking_error_rad": 0.8371693891368379,
+        "max_abs_drive_torque_Nm": 0.46044316402526086
+      },
+      "left_ankle": {
+        "tracking_rmse_rad": 0.1979492831143376,
+        "walking_tracking_rmse_rad": 0.22685950565664711,
+        "max_abs_tracking_error_rad": 0.43355502630882425,
+        "max_abs_drive_torque_Nm": 0.23845526446985338
+      },
+      "neck_pitch": {
+        "tracking_rmse_rad": 0.05380829209171787,
+        "walking_tracking_rmse_rad": 0.05873796408513517,
+        "max_abs_tracking_error_rad": 0.19721780404536776,
+        "max_abs_drive_torque_Nm": 0.10846979222495227
+      },
+      "head_pitch": {
+        "tracking_rmse_rad": 0.07480283277109886,
+        "walking_tracking_rmse_rad": 0.07346308723695809,
+        "max_abs_tracking_error_rad": 0.1478211134878042,
+        "max_abs_drive_torque_Nm": 0.08130161241829231
+      },
+      "head_yaw": {
+        "tracking_rmse_rad": 0.1247482486680853,
+        "walking_tracking_rmse_rad": 0.14382912316436672,
+        "max_abs_tracking_error_rad": 0.29538338994546776,
+        "max_abs_drive_torque_Nm": 0.16246086447000727
+      },
+      "head_roll": {
+        "tracking_rmse_rad": 0.05618301850901817,
+        "walking_tracking_rmse_rad": 0.06452026681225552,
+        "max_abs_tracking_error_rad": 0.13675016110299731,
+        "max_abs_drive_torque_Nm": 0.07521258860664853
+      },
+      "right_hip_yaw": {
+        "tracking_rmse_rad": 0.03872185544576944,
+        "walking_tracking_rmse_rad": 0.04460299349078278,
+        "max_abs_tracking_error_rad": 0.13710094333172945,
+        "max_abs_drive_torque_Nm": 0.07540551883245121
+      },
+      "right_hip_roll": {
+        "tracking_rmse_rad": 0.15571297024676942,
+        "walking_tracking_rmse_rad": 0.14525189032979335,
+        "max_abs_tracking_error_rad": 0.3159282610642462,
+        "max_abs_drive_torque_Nm": 0.1737605435853354
+      },
+      "right_hip_pitch": {
+        "tracking_rmse_rad": 0.1894573880437304,
+        "walking_tracking_rmse_rad": 0.21859424129098298,
+        "max_abs_tracking_error_rad": 0.47628918735537495,
+        "max_abs_drive_torque_Nm": 0.26195905304545625
+      },
+      "right_knee": {
+        "tracking_rmse_rad": 0.3391470871098058,
+        "walking_tracking_rmse_rad": 0.38381076345081644,
+        "max_abs_tracking_error_rad": 0.88487507405615,
+        "max_abs_drive_torque_Nm": 0.4866812907308825
+      },
+      "right_ankle": {
+        "tracking_rmse_rad": 0.16240485675032804,
+        "walking_tracking_rmse_rad": 0.18648170367581923,
+        "max_abs_tracking_error_rad": 0.34520162561332224,
+        "max_abs_drive_torque_Nm": 0.18986089408732726
+      }
+    },
+    "contact_samples": 18173,
+    "frames_with_contacts": 3997
+  },
+  "physx": {
+    "first_unstable_time_s": 10.620000000000001,
+    "first_fall_time_s": 10.915000000000001,
+    "fall_definition": "up_dot < 0.5 or root height < 0.08m",
+    "unstable_definition": "up_dot < 0.8 or root height < 0.08m",
+    "standing_max_drift_m": 0.00346880785149143,
+    "walking_forward_distance_m": 0.8194634989999999,
+    "walking_average_forward_speed_m_s": 0.05463089993333333,
+    "walking_lateral_distance_m": 0.3510257222,
+    "minimum_height_m": 0.0379885659,
+    "minimum_up_dot": -0.186493248,
+    "final_root": {
+      "position": [
+        0.8167517,
+        0.351704657,
+        0.0487078875
+      ],
+      "quaternion": [
+        0.564764261,
+        -0.516362548,
+        -0.511093,
+        -0.3914013
+      ],
+      "linear_velocity": [
+        -0.00115409284,
+        0.000429992564,
+        -0.00260979333
+      ],
+      "angular_velocity": [
+        0.0730122849,
+        -0.0604342259,
+        -0.06252726
+      ],
+      "linear_acceleration": [
+        0.0134698348,
+        0.00404698076,
+        -0.0187298749
+      ],
+      "angular_acceleration": [
+        0.232408941,
+        -0.7890754,
+        -0.158724934
+      ],
+      "up_dot": -0.0556927323,
+      "height": 0.0487078875,
+      "forward_distance": 0.8167517,
+      "lateral_distance": 0.351704657
+    },
+    "joint_tracking": {
+      "left_hip_yaw": {
+        "tracking_rmse_rad": 0.21506993732506052,
+        "walking_tracking_rmse_rad": 0.2481118932531774,
+        "max_abs_tracking_error_rad": 1.5579074645,
+        "max_abs_drive_torque_Nm": 0.206969872
+      },
+      "left_hip_roll": {
+        "tracking_rmse_rad": 0.36699358889495975,
+        "walking_tracking_rmse_rad": 0.4122994786221232,
+        "max_abs_tracking_error_rad": 1.446092914,
+        "max_abs_drive_torque_Nm": 0.578723252
+      },
+      "left_hip_pitch": {
+        "tracking_rmse_rad": 0.5184160758520839,
+        "walking_tracking_rmse_rad": 0.5984397135316594,
+        "max_abs_tracking_error_rad": 3.5660506300000003,
+        "max_abs_drive_torque_Nm": 0.525364935
+      },
+      "left_knee": {
+        "tracking_rmse_rad": 0.4945197165034615,
+        "walking_tracking_rmse_rad": 0.5548698760144223,
+        "max_abs_tracking_error_rad": 2.54530704,
+        "max_abs_drive_torque_Nm": 0.41319418
+      },
+      "left_ankle": {
+        "tracking_rmse_rad": 0.3751695594413229,
+        "walking_tracking_rmse_rad": 0.43043107192141467,
+        "max_abs_tracking_error_rad": 1.1231302,
+        "max_abs_drive_torque_Nm": 0.202868462
+      },
+      "neck_pitch": {
+        "tracking_rmse_rad": 0.5364056685039444,
+        "walking_tracking_rmse_rad": 0.619150273081036,
+        "max_abs_tracking_error_rad": 1.4478229999999999,
+        "max_abs_drive_torque_Nm": 0.461915284
+      },
+      "head_pitch": {
+        "tracking_rmse_rad": 0.42957940080607526,
+        "walking_tracking_rmse_rad": 0.49406603638744473,
+        "max_abs_tracking_error_rad": 1.1633904,
+        "max_abs_drive_torque_Nm": 0.4323479
+      },
+      "head_yaw": {
+        "tracking_rmse_rad": 0.3611832308973404,
+        "walking_tracking_rmse_rad": 0.4169869855635852,
+        "max_abs_tracking_error_rad": 2.730885835,
+        "max_abs_drive_torque_Nm": 0.947917
+      },
+      "head_roll": {
+        "tracking_rmse_rad": 0.972624786772442,
+        "walking_tracking_rmse_rad": 1.1230331603386232,
+        "max_abs_tracking_error_rad": 1.557472943,
+        "max_abs_drive_torque_Nm": 0.216146886
+      },
+      "right_hip_yaw": {
+        "tracking_rmse_rad": 1.4815308948302033,
+        "walking_tracking_rmse_rad": 1.7104982267661206,
+        "max_abs_tracking_error_rad": 2.69918201,
+        "max_abs_drive_torque_Nm": 0.5209816
+      },
+      "right_hip_roll": {
+        "tracking_rmse_rad": 0.34370376535323816,
+        "walking_tracking_rmse_rad": 0.3844112022109497,
+        "max_abs_tracking_error_rad": 1.470518877,
+        "max_abs_drive_torque_Nm": 0.375684768
+      },
+      "right_hip_pitch": {
+        "tracking_rmse_rad": 0.6393283283927458,
+        "walking_tracking_rmse_rad": 0.7371608774119275,
+        "max_abs_tracking_error_rad": 4.36639962,
+        "max_abs_drive_torque_Nm": 0.92313534
+      },
+      "right_knee": {
+        "tracking_rmse_rad": 0.43117231943387074,
+        "walking_tracking_rmse_rad": 0.4802803112393755,
+        "max_abs_tracking_error_rad": 2.3078881539999996,
+        "max_abs_drive_torque_Nm": 0.5246847
+      },
+      "right_ankle": {
+        "tracking_rmse_rad": 0.20729899381287084,
+        "walking_tracking_rmse_rad": 0.22265412348063346,
+        "max_abs_tracking_error_rad": 2.242793141,
+        "max_abs_drive_torque_Nm": 0.239070877
+      }
+    },
+    "contact_samples": 127251,
+    "frames_with_contacts": 4000
+  },
+  "joint_position_divergence_rmse_rad": {
+    "left_hip_yaw": 0.18809759350309208,
+    "left_hip_roll": 0.19394687361198745,
+    "left_hip_pitch": 0.47486902266274905,
+    "left_knee": 0.4003300489345251,
+    "left_ankle": 0.1731351607443189,
+    "neck_pitch": 0.30901351156155504,
+    "head_pitch": 0.22730939551022303,
+    "head_yaw": 1.1792929504382508,
+    "head_roll": 0.32306545558950805,
+    "right_hip_yaw": 0.38818018698192785,
+    "right_hip_roll": 0.21899027249649625,
+    "right_hip_pitch": 0.7857304561017198,
+    "right_knee": 0.17747421697072846,
+    "right_ankle": 0.301113958168172
+  },
+  "exposed_api_limits": [
+    "Private PhysX solver internals are unavailable.",
+    "Contact forces and per-step impulses are engine-native and not directly equivalent.",
+    "Timings are desktop offline instrumentation, not headset measurements.",
+    "Visuals use MuJoCo CAD, but every robot geom follows the engine's stored body transform without integrating replay."
+  ],
+  "validation": {
+    "initial_state_matched": true,
+    "all_sample_times_matched": true,
+    "all_commands_matched": true,
+    "control_phase_matched": true,
+    "quaternions_normalized": true
+  }
+}
