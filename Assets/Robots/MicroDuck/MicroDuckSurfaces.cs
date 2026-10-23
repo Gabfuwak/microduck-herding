@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Mujoco;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
@@ -14,7 +15,20 @@ internal sealed class MicroDuckSurfaces : IDisposable
     const int ARLayer = 7;
     const int SimulationLayer = 30;
     const float SurfaceThickness = 0.02f;
-    const float ChangeEpsilonSquared = 0.0000000001f;
+    // Compare shape in meters after scale/shear, independent of tracked rigid pose.
+    const float GeometryEpsilonSquared = 0.00000001f; // 0.1 mm
+    const float PoseEpsilonSquared = 0.000000000001f; // 1 micrometer
+    const float TriangleNormalEpsilonSquared = 0.0000000001f;
+
+    [Flags]
+    internal enum Change
+    {
+        None = 0,
+        Pose = 1,
+        Geometry = 2,
+        Added = 4,
+        Removed = 8
+    }
 
     sealed class Surface
     {
@@ -22,6 +36,13 @@ internal sealed class MicroDuckSurfaces : IDisposable
         public bool box;
         public Mesh mesh;
         public bool meshCaptured;
+        public string bodyName;
+        public int mocapId = -1;
+        public bool poseCaptured;
+        public bool poseDirty;
+        public Vector3 position;
+        public Quaternion rotation;
+        public Vector3 nativeUp;
         public readonly List<Vector3> vertices = new();
         public readonly List<Vector3> sourceVertices = new();
         public readonly List<int> triangles = new();
@@ -39,13 +60,14 @@ internal sealed class MicroDuckSurfaces : IDisposable
     readonly List<int> triangleScratch = new();
     readonly List<int> vertexIndexScratch = new();
     bool disposed;
+    int nextSurfaceId;
 
     public MicroDuckSurfaces(Transform anchor)
     {
         this.anchor = anchor != null ? anchor : throw new ArgumentNullException(nameof(anchor));
     }
 
-    public bool Refresh()
+    public Change Refresh()
     {
         if (disposed)
             throw new ObjectDisposedException(nameof(MicroDuckSurfaces));
@@ -56,11 +78,11 @@ internal sealed class MicroDuckSurfaces : IDisposable
             var hadSurfaces = surfaces.Count != 0;
             surfaces.Clear();
             surfacesByCollider.Clear();
-            return hadSurfaces;
+            return hadSurfaces ? Change.Removed : Change.None;
         }
         found.Clear();
         CollectScene(anchorScene);
-        var anchorPhysics = anchorScene.IsValid() ? anchorScene.GetPhysicsScene() : default;
+        var anchorPhysics = anchorScene.GetPhysicsScene();
         for (var sceneIndex = 0; sceneIndex < SceneManager.sceneCount; sceneIndex++)
         {
             var scene = SceneManager.GetSceneAt(sceneIndex);
@@ -73,7 +95,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
         for (var i = 0; i < found.Count; i++)
             foundSet.Add(found[i]);
 
-        var changed = false;
+        var changed = Change.None;
         for (var i = surfaces.Count - 1; i >= 0; i--)
         {
             var surface = surfaces[i];
@@ -81,7 +103,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
             {
                 surfacesByCollider.Remove(surface.collider);
                 surfaces.RemoveAt(i);
-                changed = true;
+                changed |= Change.Removed;
             }
         }
         for (var i = 0; i < found.Count; i++)
@@ -92,7 +114,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
                 collider.isTrigger || (collider.attachedRigidbody != null && !collider.attachedRigidbody.isKinematic) ||
                 (layer != ARLayer && layer != SimulationLayer))
             {
-                changed |= RemoveSurface(collider);
+                if (RemoveSurface(collider)) changed |= Change.Removed;
                 continue;
             }
             var surface = FindSurface(collider);
@@ -101,43 +123,42 @@ internal sealed class MicroDuckSurfaces : IDisposable
             if (!isBox && (meshCollider == null || meshCollider.sharedMesh == null))
             {
                 Diagnose(collider, "is an unsupported surface shape; only BoxCollider and MeshCollider surfaces are supported.");
-                changed |= RemoveSurface(collider);
+                if (RemoveSurface(collider)) changed |= Change.Removed;
                 continue;
             }
             if (collider is BoxCollider box && (box.size.x <= 0f || box.size.y <= 0f || box.size.z <= 0f))
             {
                 Diagnose(collider, "has a zero or negative BoxCollider dimension and cannot be emitted as a native collision mesh.");
-                changed |= RemoveSurface(collider);
+                if (RemoveSurface(collider)) changed |= Change.Removed;
                 continue;
             }
             #if !UNITY_EDITOR
             if (meshCollider != null && !meshCollider.sharedMesh.isReadable)
             {
                 Diagnose(collider, "uses a non-readable mesh and cannot provide a bounded native surface in a player build.");
-                changed |= RemoveSurface(collider);
+                if (RemoveSurface(collider)) changed |= Change.Removed;
                 continue;
             }
             #endif
             if (surface == null)
             {
-                surface = new Surface { collider = collider, box = isBox };
+                surface = new Surface {
+                    collider = collider, box = isBox,
+                    bodyName = "microduck_surface_body_" + (nextSurfaceId++).ToString(CultureInfo.InvariantCulture)
+                };
                 surfaces.Add(surface);
                 surfacesByCollider.Add(collider, surface);
-                changed = true;
+                changed |= Change.Added;
             }
             try
             {
-                if (surface.box != isBox || !Capture(surface))
-                    changed = true;
+                changed |= Capture(surface);
             }
             catch (Exception exception)
             {
                 Diagnose(collider, $"could not be read as a bounded native surface: {exception.Message}");
-                changed |= RemoveSurface(collider);
-                continue;
+                if (RemoveSurface(collider)) changed |= Change.Removed;
             }
-            surface.box = isBox;
-            surface.collider = collider;
         }
         return changed;
     }
@@ -174,88 +195,115 @@ internal sealed class MicroDuckSurfaces : IDisposable
             Debug.LogWarning($"MicroDuck surface '{collider.name}' {reason}", collider);
     }
 
-    bool Capture(Surface surface)
+    Change Capture(Surface surface)
     {
         var collider = surface.collider;
         var colliderToAnchor = anchor.worldToLocalMatrix * collider.transform.localToWorldMatrix;
+        var position = (Vector3)colliderToAnchor.GetColumn(3);
+        var rotation = Quaternion.Inverse(anchor.rotation) * collider.transform.rotation;
+        // q and -q encode the same rigid pose.
+        if (surface.poseCaptured && Quaternion.Dot(surface.rotation, rotation) < 0f)
+            rotation = new Quaternion(-rotation.x, -rotation.y, -rotation.z, -rotation.w);
+        var difference = new Vector4(rotation.x - surface.rotation.x, rotation.y - surface.rotation.y,
+            rotation.z - surface.rotation.z, rotation.w - surface.rotation.w);
+        var change = Change.None;
+        if (!surface.poseCaptured || (position - surface.position).sqrMagnitude > PoseEpsilonSquared ||
+            difference.sqrMagnitude > 0.00000000000001f)
+        {
+            surface.position = position;
+            surface.rotation = rotation;
+            surface.poseCaptured = true;
+            surface.poseDirty = true;
+            change |= Change.Pose;
+        }
+
+        // Strip only rigid rotation. Retain the full residual linear transform,
+        // including nonuniform parent scale, reflections, and shear.
+        var shape = Matrix4x4.Rotate(Quaternion.Inverse(rotation)) * colliderToAnchor;
+        bool geometryChanged;
         if (surface.box)
         {
             var box = (BoxCollider)collider;
             vertexScratch.Clear();
             var half = box.size * 0.5f;
-            var center = box.center;
             for (var i = 0; i < 8; i++)
             {
-                var local = center + new Vector3((i & 1) == 0 ? -half.x : half.x,
+                var local = box.center + new Vector3((i & 1) == 0 ? -half.x : half.x,
                     (i & 2) == 0 ? -half.y : half.y, (i & 4) == 0 ? -half.z : half.z);
-                vertexScratch.Add(colliderToAnchor.MultiplyPoint3x4(local));
+                vertexScratch.Add(shape.MultiplyVector(local));
             }
-            var changed = !SameVertices(surface.vertices, vertexScratch);
-            if (changed)
+            geometryChanged = !SameVertices(surface.vertices, vertexScratch);
+            if (geometryChanged)
             {
                 surface.vertices.Clear();
                 surface.vertices.AddRange(vertexScratch);
                 surface.triangles.Clear();
-                surface.triangles.AddRange(BoxTriangles);
+                var mirrored = shape.determinant < 0f;
+                for (var i = 0; i < BoxTriangles.Length; i += 3)
+                {
+                    surface.triangles.Add(BoxTriangles[i]);
+                    surface.triangles.Add(BoxTriangles[i + (mirrored ? 2 : 1)]);
+                    surface.triangles.Add(BoxTriangles[i + (mirrored ? 1 : 2)]);
+                }
             }
-            return !changed;
-        }
-
-        var mesh = ((MeshCollider)collider).sharedMesh;
-        var sourceChanged = false;
-        if (mesh.isReadable)
-        {
-            vertexScratch.Clear();
-            mesh.GetVertices(vertexScratch);
-            triangleScratch.Clear();
-            vertexIndexScratch.Clear();
-            for (var submesh = 0; submesh < mesh.subMeshCount; submesh++)
-            {
-                vertexIndexScratch.Clear();
-                mesh.GetTriangles(vertexIndexScratch, submesh, true);
-                triangleScratch.AddRange(vertexIndexScratch);
-            }
-            sourceChanged = !SameVertices(surface.sourceVertices, vertexScratch) ||
-                !SameTriangles(surface.triangles, triangleScratch);
-            if (sourceChanged)
-            {
-                surface.sourceVertices.Clear();
-                surface.sourceVertices.AddRange(vertexScratch);
-                surface.triangles.Clear();
-                surface.triangles.AddRange(triangleScratch);
-            }
-            surface.mesh = mesh;
-            surface.meshCaptured = true;
         }
         else
         {
-            #if UNITY_EDITOR
-            if (!surface.meshCaptured || surface.mesh != mesh)
+            var mesh = ((MeshCollider)collider).sharedMesh;
+            var topologyChanged = false;
+            if (mesh.isReadable)
             {
-                CaptureNonReadableMesh(mesh, surface);
-                sourceChanged = true;
-            }
-            #else
-            return false;
-            #endif
-        }
-
-        var changedMesh = sourceChanged || surface.vertices.Count != surface.sourceVertices.Count;
-        if (!changedMesh)
-            for (var i = 0; i < surface.sourceVertices.Count; i++)
-                if ((colliderToAnchor.MultiplyPoint3x4(surface.sourceVertices[i]) -
-                     surface.vertices[i]).sqrMagnitude > ChangeEpsilonSquared)
+                vertexScratch.Clear();
+                mesh.GetVertices(vertexScratch);
+                if (!SameVertices(surface.sourceVertices, vertexScratch, 0f))
                 {
-                    changedMesh = true;
-                    break;
+                    surface.sourceVertices.Clear();
+                    surface.sourceVertices.AddRange(vertexScratch);
                 }
-        if (changedMesh)
-        {
-            surface.vertices.Clear();
+                triangleScratch.Clear();
+                for (var submesh = 0; submesh < mesh.subMeshCount; submesh++)
+                {
+                    vertexIndexScratch.Clear();
+                    mesh.GetTriangles(vertexIndexScratch, submesh, true);
+                    triangleScratch.AddRange(vertexIndexScratch);
+                }
+                topologyChanged = !SameTriangles(surface.triangles, triangleScratch);
+                if (topologyChanged)
+                {
+                    surface.triangles.Clear();
+                    surface.triangles.AddRange(triangleScratch);
+                }
+                surface.mesh = mesh;
+                surface.meshCaptured = true;
+            }
+            else
+            {
+                #if UNITY_EDITOR
+                if (!surface.meshCaptured || surface.mesh != mesh)
+                {
+                    CaptureNonReadableMesh(mesh, surface);
+                    topologyChanged = true;
+                }
+                #else
+                throw new InvalidOperationException("A bounded player surface must have a readable mesh.");
+                #endif
+            }
+            vertexScratch.Clear();
             for (var i = 0; i < surface.sourceVertices.Count; i++)
-                surface.vertices.Add(colliderToAnchor.MultiplyPoint3x4(surface.sourceVertices[i]));
+                vertexScratch.Add(shape.MultiplyVector(surface.sourceVertices[i]));
+            geometryChanged = topologyChanged || !SameVertices(surface.vertices, vertexScratch);
+            if (geometryChanged)
+            {
+                surface.vertices.Clear();
+                surface.vertices.AddRange(vertexScratch);
+            }
         }
-        return !changedMesh;
+        if (geometryChanged)
+        {
+            surface.nativeUp = ToNative(Quaternion.Inverse(surface.rotation) * Vector3.up);
+            change |= Change.Geometry;
+        }
+        return change;
     }
 
     #if UNITY_EDITOR
@@ -298,11 +346,11 @@ internal sealed class MicroDuckSurfaces : IDisposable
     static readonly int[] BoxTriangles = { 0, 3, 2, 0, 1, 3, 4, 7, 5, 4, 6, 7, 0, 5, 1, 0, 4, 5, 2, 7, 6, 2, 3, 7, 0, 6, 4, 0, 2, 6, 1, 7, 3, 1, 5, 7 };
     static readonly int[] PrismFaces = { 0, 1, 2, 3, 5, 4, 0, 1, 4, 0, 4, 3, 1, 2, 5, 1, 5, 4, 2, 0, 3, 2, 3, 5 };
 
-    static bool SameVertices(List<Vector3> a, List<Vector3> b)
+    static bool SameVertices(List<Vector3> a, List<Vector3> b, float epsilonSquared = GeometryEpsilonSquared)
     {
         if (a.Count != b.Count) return false;
         for (var i = 0; i < a.Count; i++)
-            if ((a[i] - b[i]).sqrMagnitude > ChangeEpsilonSquared) return false;
+            if ((a[i] - b[i]).sqrMagnitude > epsilonSquared) return false;
         return true;
     }
 
@@ -324,12 +372,25 @@ internal sealed class MicroDuckSurfaces : IDisposable
         var id = 0;
         foreach (var surface in surfaces)
         {
-            if (surface.collider == null || surface.vertices.Count == 0)
+            if (surface.collider == null)
                 continue;
+            geoms.Append("    <body name=\"").Append(surface.bodyName).Append("\" mocap=\"true\" pos=\"");
+            var position = ToNative(surface.position);
+            AppendFloat(geoms, position.x); geoms.Append(' ');
+            AppendFloat(geoms, position.y); geoms.Append(' ');
+            AppendFloat(geoms, position.z);
+            geoms.Append("\" quat=\"");
+            var rotation = surface.rotation;
+            AppendFloat(geoms, rotation.w); geoms.Append(' ');
+            AppendFloat(geoms, -rotation.z); geoms.Append(' ');
+            AppendFloat(geoms, rotation.x); geoms.Append(' ');
+            AppendFloat(geoms, -rotation.y);
+            geoms.Append("\">\n");
             if (surface.box)
                 AppendBox(assets, geoms, surface, ref id);
             else
                 AppendMeshPrisms(assets, geoms, surface, ref id);
+            geoms.Append("    </body>\n");
         }
         var xml = new StringBuilder(robotXml);
         InsertBeforeClosing(xml, "</asset>", assets);
@@ -344,7 +405,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
             center += ToNative(surface.vertices[i]);
         center /= surface.vertices.Count;
         var name = "microduck_surface_" + id++;
-        AppendMeshAsset(assets, name, surface.vertices, BoxTriangles, center);
+        AppendMeshAsset(assets, name, surface.vertices, surface.triangles, center);
         AppendGeom(geoms, name, center);
     }
 
@@ -359,8 +420,8 @@ internal sealed class MicroDuckSurfaces : IDisposable
                 continue;
             var a = ToNative(v[ia]); var b = ToNative(v[ib]); var c = ToNative(v[ic]);
             var normal = Vector3.Cross(b - a, c - a);
-            if (normal.sqrMagnitude < ChangeEpsilonSquared) continue;
-            if (Vector3.Dot(normal, Vector3.forward) < 0f)
+            if (normal.sqrMagnitude < TriangleNormalEpsilonSquared) continue;
+            if (Vector3.Dot(normal, surface.nativeUp) < 0f)
             {
                 (b, c) = (c, b);
                 normal = -normal;
@@ -377,6 +438,42 @@ internal sealed class MicroDuckSurfaces : IDisposable
     }
 
     static Vector3 ToNative(Vector3 p) => new(p.z, -p.x, p.y);
+
+    public unsafe void BindNativeModel(MujocoLib.mjModel_* model)
+    {
+        foreach (var surface in surfaces)
+        {
+            var bodyId = MujocoLib.mj_name2id(model, (int)MujocoLib.mjtObj.mjOBJ_BODY, surface.bodyName);
+            if (bodyId < 0 || model->body_mocapid[bodyId] < 0)
+                throw new InvalidOperationException("Missing native mocap surface: " + surface.bodyName);
+            surface.mocapId = model->body_mocapid[bodyId];
+        }
+    }
+
+    public unsafe int ApplyNativePoses(MujocoLib.mjData_* data, bool all)
+    {
+        var updated = 0;
+        foreach (var surface in surfaces)
+        {
+            if (!all && !surface.poseDirty) continue;
+            if (surface.mocapId < 0)
+                throw new InvalidOperationException("Bind the native surface model before updating poses.");
+            var position = ToNative(surface.position);
+            var rotation = surface.rotation;
+            var p = surface.mocapId * 3;
+            var q = surface.mocapId * 4;
+            data->mocap_pos[p] = position.x;
+            data->mocap_pos[p + 1] = position.y;
+            data->mocap_pos[p + 2] = position.z;
+            data->mocap_quat[q] = rotation.w;
+            data->mocap_quat[q + 1] = -rotation.z;
+            data->mocap_quat[q + 2] = rotation.x;
+            data->mocap_quat[q + 3] = -rotation.y;
+            surface.poseDirty = false;
+            updated++;
+        }
+        return updated;
+    }
 
     static void AppendMeshAsset(StringBuilder output, string name, IReadOnlyList<Vector3> vertices,
         IReadOnlyList<int> triangles, Vector3 center)
@@ -420,7 +517,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
         output.Append("    <geom name=\"").Append(name).Append("\" type=\"mesh\" mesh=\"").Append(name)
             .Append("\" pos=\"");
         AppendFloat(output, center.x); output.Append(' '); AppendFloat(output, center.y); output.Append(' '); AppendFloat(output, center.z);
-        output.Append("\" contype=\"1\" conaffinity=\"1\" friction=\"1 0.005 0.0001\"/>\n");
+        output.Append("\" contype=\"1\" conaffinity=\"1\" density=\"0\" friction=\"1 0.005 0.0001\"/>\n");
     }
 
     static void AppendFloat(StringBuilder output, float value) => output.Append(value.ToString("R", CultureInfo.InvariantCulture));

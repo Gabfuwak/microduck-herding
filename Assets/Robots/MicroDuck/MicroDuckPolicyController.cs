@@ -1,6 +1,9 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.IO;
+using Unity.Profiling;
+using Stopwatch = System.Diagnostics.Stopwatch;
 using Mujoco;
 using Unity.InferenceEngine;
 using UnityEngine;
@@ -28,6 +31,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     [SerializeField] TextAsset sceneXml;
     [SerializeField] NativeAsset[] nativeAssets;
     [SerializeField] Body[] bodies;
+    [SerializeField] bool capturePerformance;
 
     const int JointCount = 14;
     const int ObservationCount = 61;
@@ -38,6 +42,13 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     const int FreeJoint = (int)MujocoLib.mjtJoint.mjJNT_FREE;
     const double PhysicsPeriod = 0.005;
     const int SubstepsPerPolicy = 4;
+
+    static readonly ProfilerMarker SurfaceScanMarker = new("MicroDuck.SurfaceScan");
+    static readonly ProfilerMarker SceneXmlMarker = new("MicroDuck.SceneXml");
+    static readonly ProfilerMarker VfsMarker = new("MicroDuck.VfsPreparation");
+    static readonly ProfilerMarker ModelCompileMarker = new("MicroDuck.ModelCompile");
+    static readonly ProfilerMarker PolicyMarker = new("MicroDuck.Policy");
+    static readonly ProfilerMarker SurfacePoseMarker = new("MicroDuck.SurfacePose");
 
     static readonly string[] JointNames =
     {
@@ -71,6 +82,48 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     Vector3 command;
     MicroDuckSurfaces surfaces;
     double nextSurfaceRefresh;
+    MicroDuckPerformance performance;
+    long previousFrameTimestamp;
+
+    [ContextMenu("Begin Performance Capture")]
+    public void BeginPerformanceCapture()
+    {
+        performance = new MicroDuckPerformance();
+        previousFrameTimestamp = 0;
+    }
+
+    public string GetPerformanceReport()
+    {
+        if (performance == null)
+            throw new InvalidOperationException("Begin a performance capture before requesting its report.");
+        return performance.ToJson();
+    }
+
+    [ContextMenu("Save Performance Capture")]
+    public void SavePerformanceCapture()
+    {
+        var path = Path.Combine(Application.persistentDataPath, "microduck-performance.json");
+        Directory.CreateDirectory(Application.persistentDataPath);
+        File.WriteAllText(path, GetPerformanceReport());
+        Debug.Log($"MicroDuck performance capture saved to {path}", this);
+    }
+
+    void LateUpdate()
+    {
+        if (performance == null || !initialized)
+            return;
+        var now = Stopwatch.GetTimestamp();
+        if (previousFrameTimestamp != 0)
+            performance.RecordFrame((float)((now - previousFrameTimestamp) / (double)Stopwatch.Frequency));
+        previousFrameTimestamp = now;
+    }
+
+    void OnApplicationPause(bool paused)
+    {
+        previousFrameTimestamp = 0;
+        if (paused && performance != null && capturePerformance)
+            SavePerformanceCapture();
+    }
 
     public void SetVelocityCommand(float forward, float left, float yawRate) =>
         command = new Vector3(forward, left, yawRate);
@@ -115,6 +168,8 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             return;
         try
         {
+            if (capturePerformance && performance == null)
+                BeginPerformanceCapture();
             if (MujocoLib.mjVERSION_HEADER != 3015000 || MujocoLib.mj_version() != 3015000)
                 throw new InvalidOperationException("MicroDuck requires the MuJoCo 3.15.0 runtime and bindings.");
             if (standingModel == null || walkingModel == null || sceneXml == null ||
@@ -130,10 +185,15 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             input = new Tensor<float>(new TensorShape(1, ObservationCount));
 
             surfaces = new MicroDuckSurfaces(transform);
-            surfaces.Refresh();
-            model = LoadNativeModel(surfaces.BuildSceneXml(sceneXml.text));
+            var scanStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
+            using (SurfaceScanMarker.Auto())
+                surfaces.Refresh();
+            performance?.Record(MicroDuckPerformance.Timing.SurfaceScan, scanStarted);
+            model = LoadNativeModel(BuildNativeSceneXml());
             ResolveModelElements();
             InitializeNativeState();
+            surfaces.BindNativeModel(model);
+            surfaces.ApplyNativePoses(data, true);
             MujocoLib.mj_forward(model, data);
             ApplyNativePoses();
 
@@ -160,24 +220,32 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         MujocoLib.mj_defaultVFS(vfs);
         try
         {
-            foreach (var asset in nativeAssets)
+            var vfsStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
+            using (VfsMarker.Auto())
             {
-                if (string.IsNullOrEmpty(asset.filename) || asset.data == null)
-                    throw new InvalidOperationException("Every native asset requires a filename and byte asset.");
-                var bytes = asset.data.bytes;
-                if (bytes.Length == 0)
-                    throw new InvalidOperationException("Native asset is empty: " + asset.filename);
-                fixed (byte* buffer = bytes)
-                    if (MujocoLib.mj_addBufferVFS(vfs, asset.filename, buffer, bytes.Length) != 0)
-                        throw new InvalidOperationException("Could not add native asset to MuJoCo VFS: " + asset.filename);
+                foreach (var asset in nativeAssets)
+                {
+                    if (string.IsNullOrEmpty(asset.filename) || asset.data == null)
+                        throw new InvalidOperationException("Every native asset requires a filename and byte asset.");
+                    var bytes = asset.data.bytes;
+                    if (bytes.Length == 0)
+                        throw new InvalidOperationException("Native asset is empty: " + asset.filename);
+                    fixed (byte* buffer = bytes)
+                        if (MujocoLib.mj_addBufferVFS(vfs, asset.filename, buffer, bytes.Length) != 0)
+                            throw new InvalidOperationException("Could not add native asset to MuJoCo VFS: " + asset.filename);
+                }
+                var xmlBytes = Encoding.UTF8.GetBytes(xml);
+                fixed (byte* buffer = xmlBytes)
+                    if (MujocoLib.mj_addBufferVFS(vfs, "scene.xml", buffer, xmlBytes.Length) != 0)
+                        throw new InvalidOperationException("Could not add scene XML to MuJoCo VFS.");
             }
-
-            var xmlBytes = Encoding.UTF8.GetBytes(xml);
-            fixed (byte* buffer = xmlBytes)
-                if (MujocoLib.mj_addBufferVFS(vfs, "scene.xml", buffer, xmlBytes.Length) != 0)
-                    throw new InvalidOperationException("Could not add scene XML to MuJoCo VFS.");
+            performance?.Record(MicroDuckPerformance.Timing.Vfs, vfsStarted);
             var error = new StringBuilder(2048);
-            var loadedModel = MujocoLib.mj_loadXML("scene.xml", vfs, error, error.Capacity);
+            var compileStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
+            MujocoLib.mjModel_* loadedModel;
+            using (ModelCompileMarker.Auto())
+                loadedModel = MujocoLib.mj_loadXML("scene.xml", vfs, error, error.Capacity);
+            performance?.Record(MicroDuckPerformance.Timing.ModelCompile, compileStarted);
             if (loadedModel == null)
                 throw new InvalidOperationException("MuJoCo could not load MicroDuck scene: " + error);
             return loadedModel;
@@ -186,6 +254,16 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         {
             MujocoLib.mj_deleteVFS(vfs);
         }
+    }
+
+    string BuildNativeSceneXml()
+    {
+        var started = performance != null ? Stopwatch.GetTimestamp() : 0;
+        string xml;
+        using (SceneXmlMarker.Auto())
+            xml = surfaces.BuildSceneXml(sceneXml.text);
+        performance?.Record(MicroDuckPerformance.Timing.SceneXml, started);
+        return xml;
     }
 
     unsafe void ResolveModelElements()
@@ -286,21 +364,53 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     }
 
     // Geometry recompiles do not restart the policy or discard integration history.
+    // Returns whether geometry or placement changed; pose-only updates never compile.
     public bool RefreshSurfaces()
     {
         if (!initialized)
             throw new InvalidOperationException("InitializeSimulation must be called before RefreshSurfaces.");
-        if (!surfaces.Refresh())
+        var scanStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
+        MicroDuckSurfaces.Change change;
+        using (SurfaceScanMarker.Auto())
+            change = surfaces.Refresh();
+        performance?.Record(MicroDuckPerformance.Timing.SurfaceScan, scanStarted);
+        if (change == MicroDuckSurfaces.Change.None)
+        {
+            performance?.RecordSurfaceRefresh(false, 0);
             return false;
+        }
+        const MicroDuckSurfaces.Change rebuild = MicroDuckSurfaces.Change.Geometry |
+            MicroDuckSurfaces.Change.Added | MicroDuckSurfaces.Change.Removed;
+        if ((change & rebuild) == 0)
+        {
+            var started = performance != null ? Stopwatch.GetTimestamp() : 0;
+            int updated;
+            using (SurfacePoseMarker.Auto())
+            {
+                updated = surfaces.ApplyNativePoses(data, false);
+                ForwardPreservingWarmstart(model, data);
+            }
+            performance?.Record(MicroDuckPerformance.Timing.SurfacePose, started);
+            performance?.RecordSurfaceRefresh(false, updated);
+            return updated != 0;
+        }
 
-        var replacementModel = LoadNativeModel(surfaces.BuildSceneXml(sceneXml.text));
+        var replacementModel = LoadNativeModel(BuildNativeSceneXml());
         MujocoLib.mjData_* replacementData = null;
         try
         {
-            const int stateMask = (int)MujocoLib.mjtState.mjSTATE_INTEGRATION;
+            // Surface count changes both mocap state and body-sized Cartesian forces.
+            // Transfer the robot-sized packed state, then map robot forces by name.
+            const int stateMask = (int)MujocoLib.mjtState.mjSTATE_INTEGRATION &
+                ~((int)MujocoLib.mjtState.mjSTATE_MOCAP_POS |
+                  (int)MujocoLib.mjtState.mjSTATE_MOCAP_QUAT |
+                  (int)MujocoLib.mjtState.mjSTATE_XFRC_APPLIED);
             var stateSize = MujocoLib.mj_stateSize(model, stateMask);
             if (replacementModel->nq != model->nq || replacementModel->nv != model->nv ||
-                replacementModel->nu != model->nu ||
+                replacementModel->nu != model->nu || replacementModel->na != model->na ||
+                replacementModel->njnt != model->njnt || replacementModel->neq != model->neq ||
+                replacementModel->nhistory != model->nhistory || replacementModel->nuserdata != model->nuserdata ||
+                replacementModel->npluginstate != model->npluginstate ||
                 MujocoLib.mj_stateSize(replacementModel, stateMask) != stateSize)
                 throw new InvalidOperationException("Surface updates must not change the robot's integration-state layout.");
             replacementData = MujocoLib.mj_makeData(replacementModel);
@@ -312,11 +422,22 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
                 MujocoLib.mj_getState(model, data, buffer, stateMask);
                 MujocoLib.mj_setState(replacementModel, replacementData, buffer, stateMask);
             }
+            for (var i = 0; i < bodies.Length; i++)
+            {
+                var replacementBody = MujocoLib.mj_name2id(replacementModel, ObjectBody, bodies[i].name);
+                if (replacementBody <= 0)
+                    throw new InvalidOperationException("Missing robot body after surface update: " + bodies[i].name);
+                for (var axis = 0; axis < 6; axis++)
+                    replacementData->xfrc_applied[replacementBody * 6 + axis] =
+                        data->xfrc_applied[bodyIds[i] * 6 + axis];
+            }
             replacementModel->opt.timestep = PhysicsPeriod;
             replacementModel->opt.gravity[0] = nativeGravity.x;
             replacementModel->opt.gravity[1] = nativeGravity.y;
             replacementModel->opt.gravity[2] = nativeGravity.z;
-            MujocoLib.mj_forward(replacementModel, replacementData);
+            surfaces.BindNativeModel(replacementModel);
+            surfaces.ApplyNativePoses(replacementData, true);
+            ForwardPreservingWarmstart(replacementModel, replacementData);
         }
         catch
         {
@@ -332,7 +453,23 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         data = replacementData;
         ResolveModelElements();
         ApplyNativePoses();
+        performance?.RecordSurfaceRefresh(true, 0);
+        performance?.RecordRebuildReasons(
+            (change & MicroDuckSurfaces.Change.Geometry) != 0,
+            (change & MicroDuckSurfaces.Change.Added) != 0,
+            (change & MicroDuckSurfaces.Change.Removed) != 0);
         return true;
+    }
+
+    static void ForwardPreservingWarmstart(MujocoLib.mjModel_* nativeModel, MujocoLib.mjData_* nativeData)
+    {
+        // Forward refreshes contacts/sensors without advancing time, but also
+        // overwrites warmstart. Keep that integration state until the next step.
+        var count = checked((int)nativeModel->nv);
+        double* warmstart = stackalloc double[count];
+        for (var i = 0; i < count; i++) warmstart[i] = nativeData->qacc_warmstart[i];
+        MujocoLib.mj_forward(nativeModel, nativeData);
+        for (var i = 0; i < count; i++) nativeData->qacc_warmstart[i] = warmstart[i];
     }
 
     public unsafe void SimulateStep(float deltaTime)
@@ -374,11 +511,14 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     Tensor<float> RunPolicy(Worker worker)
     {
+        var started = performance != null ? Stopwatch.GetTimestamp() : 0;
+        using var marker = PolicyMarker.Auto();
         worker.Schedule(input);
         var output = worker.PeekOutput() as Tensor<float>;
         if (output == null || output.shape != new TensorShape(1, JointCount))
             throw new InvalidOperationException("Locomotion policy must produce float actions [1,14].");
         output.CompleteAllPendingOperations();
+        performance?.Record(MicroDuckPerformance.Timing.Policy, started);
         return output;
     }
 
@@ -454,6 +594,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     public void ReleaseSimulation()
     {
         initialized = false;
+        previousFrameTimestamp = 0;
         standingWorker?.Dispose();
         standingWorker = null;
         walkingWorker?.Dispose();

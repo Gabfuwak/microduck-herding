@@ -42,10 +42,35 @@ finite edges; boxes retain their transformed dimensions. Readable meshes update
 in place. Editor-only XR Simulation meshes can also be captured without enabling
 Read/Write on imported assets; non-readable player meshes and unsupported
 collider shapes warn and are omitted. Moving dynamic PhysX rigidbodies are not
-coupled to MuJoCo. Geometry is polled every 0.25 simulation seconds; a changed
-surface recompiles the native world while preserving integration state, policy
-workers, previous actions and control cadence. No navigation or fall recovery.
+coupled to MuJoCo. Surfaces are polled every 0.25 simulation seconds. Each has a
+massless native mocap body: rigid pose corrections update its placement and
+contacts without recompiling, advancing time, or running inference. Geometry
+remains body-local with scale/shear retained; position changes use a 1 micrometer
+tolerance, and accumulated shape changes over 0.1 mm, topology changes, additions
+or removals rebuild the world. Rebuilds preserve robot integration state, applied
+forces, policy workers, previous actions and control cadence even when surface
+count changes. Mocap corrections do not model moving-platform velocity.
+Camera motion alone is not a surface change. No navigation or fall recovery.
 Keep the spawn anchor at unit world scale.
+
+Performance capture is opt-in: enable Capture Performance before initialization,
+or use the controller's Begin Performance Capture context menu to start/reset it.
+Save Performance Capture exports microduck-performance.json under
+Application.persistentDataPath; Inspector-enabled capture also saves on pause.
+The report includes compile/rebuild reasons, pose/unchanged counts, and bounded
+rolling p50/p95/p99 windows (4096 frame intervals, 1024 samples per operation),
+plus lifetime count/total/max. Frame intervals are wall-clock LateUpdate spacing,
+not GPU/CPU attribution. No per-frame logging; JSON export allocates/sorts only
+when requested. Unity Profiler markers cover SurfaceScan, SceneXml,
+VfsPreparation, ModelCompile, Policy and SurfacePose under the MicroDuck prefix.
+The isolated Editor comparison applied 25 identical 30-micrometer corrections:
+25 rebuilds became zero; refresh p50/p95 fell from 105.232/123.813 ms to
+0.043/0.083 ms. Native model/data identity and robot state were preserved.
+Warmed pose refresh and timing recording each allocated zero managed bytes.
+Standing, walking off a finite edge, lower-floor contact, concave gaps, removed
+support, sheared/reflected boxes, and changing surface counts passed.
+Evidence: Library/SurfaceOptimization/{baseline,optimized}.json.
+These are Editor refresh timings, not headset frame-time/FPS measurements.
 Before bounded surfaces were introduced, a 20-second isolated Unity rollout
 (five seconds standing, fifteen walking) on the training plane
 stayed upright: 2.47 mm standing drift, 1.888 m forward travel, 0.126 m/s average.
