@@ -1,9 +1,66 @@
 #!/usr/bin/env python3
-"""Vendor pinned MuJoCo Unity bindings, Linux native library and MicroDuck VFS model.
+"""Set up or regenerate the vendored MuJoCo bindings and MicroDuck model.
 
-Run from any directory with Python 3.10+: python3 Tools/setup_mujoco_unity.py
-The script uses the same source checkout and commit guard as build_mujoco_android.py.
+Ready-to-open project: use Unity 6000.6.3f1 on Linux x86_64. The robot assets,
+raw C# bindings and Linux/Android ARM64 native libraries are checked in.
+Windows/macOS Editor native libraries are not supplied. Regeneration is optional,
+not part of normal setup.
+
+Open Assets/Scenes/MainScene.unity. Desktop controls: mouse look, WASD/arrow
+movement, Space/Shift up/down and left-click placement. Desktop scripts and the
+AR simulation environment live in Assets/Desktop; robot code/assets live in
+Assets/Robots/MicroDuck. For Quest, install Unity's Android Build Support module,
+select the Android build profile and build MainScene for ARM64. Use the existing
+XR placement gesture; one duck is allowed at a time.
+
+Share source through Git: Assets, Packages, ProjectSettings, Tools and the source
+submodule reference. Keep .meta files with their assets. Put player builds under
+Builds/; Library, Temp, Logs, UserSettings and Python caches are local/generated.
+Local historical captures and builds are archived under Library/HandoffArchive
+and are not part of the project handoff.
+
+To regenerate Linux/native model assets, first initialize the source submodule
+from the project root:
+    git submodule update --init --recursive
+Then run with Python 3.10+:
+    python3 Tools/setup_mujoco_unity.py
+The script uses pinned source and keeps its source/build cache under Library.
+To rebuild the Android ARM64 library (Linux host), install Unity's Android Build
+Support including Android SDK/NDK and OpenJDK, or provide an Android NDK with
+--ndk PATH / ANDROID_NDK_ROOT:
+    python3 Tools/build_mujoco_android.py [--ndk PATH]
+This rebuild also requires CMake and Git; generated output replaces the checked-in
+Android plugin and native license notices. Unity Android player builds additionally
+need the Android Build Support module (SDK, NDK and OpenJDK) installed for the
+same Unity version. The smoke check requires a connected ARM64 Android device
+with USB debugging and adb:
+    python3 Tools/smoke_mujoco_android.py [--ndk NDK] [--serial SERIAL]
+    python3 Tools/smoke_mujoco_android.py --build-only [--ndk NDK]
+
+In Unity, Tools/MicroDuck/Rebuild MuJoCo Prefab regenerates visuals from the
+submodule's full visual MJCF and binary STLs; use it outside Play mode. Configure
+Locomotion Prefab refreshes native/policy bindings without regenerating CAD.
+Generated visuals have no PhysX colliders or rigidbodies. Python regression
+tests for source-model pruning can be run with:
+    python3 -m unittest discover -s Tools
+
+Runtime: MicroDuckSpawner prepares one hidden duck before placement, warming the
+native world and both CPU policies; placement reuses resources and resets state.
+Physics runs at 200 Hz and policy inference at 50 Hz. MicroDuckWalkDemo stands
+for five simulation seconds, then commands 0.3 m/s forward. Native body poses
+drive CAD through ROS-to-Unity (-y,z,x); the spawn anchor must have unit world
+scale. MicroDuckSurfaces captures static/kinematic boxes and meshes on AR and
+simulation layers 7/30; there is no implicit floor. Shape/add/remove rebuilds
+preserve robot integration state and policy history. Dynamic PhysX interaction,
+navigation and stand-up recovery are not implemented. Opt-in performance capture
+records bounded frame/operation percentiles and rebuild reasons.
+
+Visual source: https://github.com/pollen-robotics/microduck_rl
+Hardware: https://github.com/pollen-robotics/microduck (Creative Commons BY-SA-NC,
+per the source README). Preserve source attribution when redistributing derived
+visual meshes. Native MuJoCo license notices remain in StreamingAssets.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -177,6 +234,32 @@ PluginImporter:
     return plugin_hash
 
 
+def _remove_visual_geometry(robot: ET.Element) -> None:
+    # Only the upstream visual class is eligible. Respect per-geom collision
+    # overrides and explicit geom references even when automatic masks are zero.
+    visual = robot.find(".//default[@class='visual']/geom")
+    visual_defaults = visual.attrib if visual is not None else {}
+    referenced = {
+        element.get(attribute)
+        for element in robot.iter()
+        for attribute in ("geom", "geom1", "geom2")
+        if element.get(attribute)
+    }
+    referenced.update(
+        element.get("objname") for element in robot.iter()
+        if element.get("objtype") == "geom" and element.get("objname")
+    )
+    for world in robot.findall("worldbody"):
+        for parent in world.iter():
+            for geom in list(parent.findall("geom")):
+                if geom.get("class") != "visual" or geom.get("name") in referenced:
+                    continue
+                contype = int(geom.get("contype", visual_defaults.get("contype", "1")))
+                conaffinity = int(geom.get("conaffinity", visual_defaults.get("conaffinity", "1")))
+                if contype == 0 and conaffinity == 0:
+                    parent.remove(geom)
+
+
 def make_model() -> None:
     source_xml = ROBOT_DIR / "robot_allcollisions.xml"
     scene_xml = ROBOT_DIR / "scene.xml"
@@ -184,8 +267,8 @@ def make_model() -> None:
         raise RuntimeError(f"Missing pinned MicroDuck source MJCF under {ROBOT_DIR}")
     robot = ET.parse(source_xml).getroot()
     scene = ET.parse(scene_xml).getroot()
-    # Expand the source scene's include in-place, preserving all robot XML
-    # elements. Keep scene lighting/visual settings but discard texture assets.
+    # Keep the full-contact robot, but Unity supplies its CAD rendering.
+    _remove_visual_geometry(robot)
     for child in list(scene):
         if child.tag == "include":
             scene.remove(child)
@@ -202,8 +285,8 @@ def make_model() -> None:
         option = ET.Element("option")
         robot.insert(0, option)
     option.set("timestep", "0.005")
-    # Remove any source keyframes while retaining all source defaults, bodies,
-    # contact, actuators, sensors, equality and native mesh/material assets.
+    # Remove source keyframes while retaining defaults, bodies, inertias,
+    # contact, actuators, sensors, equality and every collision geom.
     scene_visual = scene.find("visual")
     if scene_visual is not None:
         robot.append(scene_visual)
@@ -218,9 +301,18 @@ def make_model() -> None:
             if element.tag == "geom" and element.get("name") == "floor":
                 continue
             world.append(element)
-    # Only source meshes referenced by a geom are bundled. Compiler meshdir
-    # remains "assets" and VFS filenames therefore match assets/*.stl.
     referenced_mesh_names = {geom.get("mesh") for geom in robot.iter("geom") if geom.get("mesh")}
+    referenced_materials = {element.get("material") for element in robot.iter() if element.get("material")}
+    for assets in robot.findall("asset"):
+        for mesh in list(assets.findall("mesh")):
+            name = mesh.get("name") or Path(mesh.get("file", "")).stem
+            if name not in referenced_mesh_names:
+                assets.remove(mesh)
+        for material in list(assets.findall("material")):
+            if material.get("name") not in referenced_materials:
+                assets.remove(material)
+    # Keep only referenced meshes in XML and VFS. Compiler meshdir remains
+    # "assets", so VFS filenames match assets/*.stl.
     mesh_files = sorted({
         mesh.get("file")
         for mesh in robot.findall("./asset/mesh")
@@ -228,6 +320,7 @@ def make_model() -> None:
     })
     output_asset_dir = MODEL_OUT / "assets"
     output_asset_dir.mkdir(parents=True, exist_ok=True)
+    mesh_copies = []
     for filename in mesh_files:
         relative = PurePosixPath(filename)
         if relative.is_absolute() or ".." in relative.parts or len(relative.parts) != 1:
@@ -235,7 +328,15 @@ def make_model() -> None:
         source_mesh = ROBOT_DIR / "assets" / relative.name
         if not source_mesh.is_file():
             raise RuntimeError(f"Referenced mesh missing: {source_mesh}")
-        shutil.copyfile(source_mesh, output_asset_dir / f"{relative.name}.bytes")
+        mesh_copies.append((source_mesh, output_asset_dir / f"{relative.name}.bytes"))
+    # Validate all inputs before changing any previously generated asset.
+    for source_mesh, destination in mesh_copies:
+        shutil.copyfile(source_mesh, destination)
+    expected = {destination.name for _, destination in mesh_copies}
+    for path in output_asset_dir.iterdir():
+        if path.is_file() and (path.name.endswith(".bytes") or path.name.endswith(".bytes.meta")):
+            if path.name.removesuffix(".meta") not in expected:
+                path.unlink()
     ET.indent(robot, space="  ")
     ET.ElementTree(robot).write(MODEL_OUT / "scene.xml", encoding="utf-8", xml_declaration=True)
 

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Build the pinned MuJoCo 3.15.0 Android ARM64 shared library.
 
-Run from the Unity project root (or any working directory):
+Optional for a project opened with the checked-in native libraries. Run from
+the Unity project root (or any working directory):
     python3 Tools/build_mujoco_android.py [--ndk PATH]
-The source checkout and CMake build cache live under Library/MuJoCoAndroid.
+Requires Git, CMake and an Android NDK (Unity's Android Build Support supplies
+the SDK/NDK/OpenJDK needed for player builds). Resolve the NDK from the Unity
+6000.6.3f1 installation, ANDROID_NDK_ROOT, or --ndk. Source and CMake caches
+live under ignored Library/MuJoCoAndroid; the output replaces the Android
+ARM64 plugin and its native license notices.
 """
 
 from __future__ import annotations

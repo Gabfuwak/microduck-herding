@@ -175,10 +175,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             if (standingModel == null || walkingModel == null || sceneXml == null ||
                 nativeAssets == null || bodies == null || bodies.Length == 0)
                 throw new InvalidOperationException("Locomotion requires both policies, native scene assets and body transforms.");
-            if (Physics.gravity.sqrMagnitude < 0.000001f)
-                throw new InvalidOperationException("MicroDuck native simulation requires nonzero world gravity.");
-            if ((transform.lossyScale - Vector3.one).sqrMagnitude > 0.000001f)
-                throw new InvalidOperationException("MicroDuck native simulation requires unit world scale.");
+            ValidateAnchor();
 
             standingWorker = CreateWorker(standingModel);
             walkingWorker = CreateWorker(walkingModel);
@@ -191,17 +188,13 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             performance?.Record(MicroDuckPerformance.Timing.SurfaceScan, scanStarted);
             model = LoadNativeModel(BuildNativeSceneXml());
             ResolveModelElements();
+            data = MujocoLib.mj_makeData(model);
+            if (data == null)
+                throw new InvalidOperationException("MuJoCo could not allocate MicroDuck simulation data.");
             InitializeNativeState();
             surfaces.BindNativeModel(model);
-            surfaces.ApplyNativePoses(data, true);
-            MujocoLib.mj_forward(model, data);
-            ApplyNativePoses();
-
-            Array.Clear(lastAction, 0, lastAction.Length);
-            substepsSincePolicy = 0;
-            nextSurfaceRefresh = 0.25;
             initialized = true;
-            StepPolicy();
+            ApplyInitialState();
             RunPolicy(walkingWorker);
         }
         catch
@@ -209,6 +202,36 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             ReleaseSimulation();
             throw;
         }
+    }
+
+    public void PlacePreparedSimulation()
+    {
+        if (!initialized)
+            throw new InvalidOperationException("Prepare the duck before placing it.");
+        ValidateAnchor();
+        // Reuse the prepared workers/model/data, but not its old anchor-relative
+        // contacts, gravity, actions or clocks. No simulation ran while hidden.
+        command = Vector3.zero;
+        MujocoLib.mj_resetData(model, data);
+        InitializeNativeState();
+        RefreshSurfaces();
+        ApplyInitialState();
+    }
+
+    void ApplyInitialState()
+    {
+        surfaces.ApplyNativePoses(data, true);
+        MujocoLib.mj_forward(model, data);
+        ApplyNativePoses();
+        StepPolicy();
+    }
+
+    void ValidateAnchor()
+    {
+        if (Physics.gravity.sqrMagnitude < 0.000001f)
+            throw new InvalidOperationException("MicroDuck native simulation requires nonzero world gravity.");
+        if ((transform.lossyScale - Vector3.one).sqrMagnitude > 0.000001f)
+            throw new InvalidOperationException("MicroDuck native simulation requires unit world scale.");
     }
 
     unsafe MujocoLib.mjModel_* LoadNativeModel(string xml)
@@ -336,9 +359,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     unsafe void InitializeNativeState()
     {
-        data = MujocoLib.mj_makeData(model);
-        if (data == null)
-            throw new InvalidOperationException("MuJoCo could not allocate MicroDuck simulation data.");
+        Array.Clear(lastAction, 0, lastAction.Length);
+        substepsSincePolicy = 0;
+        nextSurfaceRefresh = 0.25;
+        previousFrameTimestamp = 0;
         model->opt.timestep = PhysicsPeriod;
         var gravityInAnchorUnity = transform.InverseTransformDirection(Physics.gravity);
         nativeGravity = new Vector3(

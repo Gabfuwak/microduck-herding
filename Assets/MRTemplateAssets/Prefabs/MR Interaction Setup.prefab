@@ -1916,15 +1916,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_CameraToFace: {fileID: 6484816944661230508}
-  m_ObjectPrefabs:
-  - {fileID: 2774184874629296922, guid: 3854676da5ce52a7e8b6f5c64e753b29, type: 3}
-  m_SpawnVisualizationPrefab: {fileID: 0}
-  m_SpawnOptionIndex: 0
-  m_OnlySpawnInView: 0
-  m_ViewportPeriphery: 0.2
-  m_ApplyRandomAngleAtSpawn: 0
-  m_SpawnAngleRange: 45
-  m_SpawnAsChildren: 0
+  m_ObjectPrefab: {fileID: 2774184874629296922, guid: 3854676da5ce52a7e8b6f5c64e753b29, type: 3}
 --- !u!1 &6660900155203182598
 GameObject:
   m_ObjectHideFlags: 0
@@ -2418,10 +2410,6 @@ PrefabInstance:
       value: Contact Spawn Trigger
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
-      propertyPath: m_ObjectSpawner
-      value: 
-      objectReference: {fileID: 3339367952642848919}
-    - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_InteractionGroup
       value: 
       objectReference: {fileID: 6942480132829009697}
@@ -2447,7 +2435,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets.ObjectSpawner, Unity.XR.Interaction.Toolkit.Samples.StarterAssets
+      value: MicroDuckSpawner, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
@@ -2525,10 +2513,6 @@ PrefabInstance:
       value: Contact Spawn Trigger
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
-      propertyPath: m_ObjectSpawner
-      value: 
-      objectReference: {fileID: 3339367952642848919}
-    - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_InteractionGroup
       value: 
       objectReference: {fileID: 382918236456183140}
@@ -2554,7 +2538,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets.ObjectSpawner, Unity.XR.Interaction.Toolkit.Samples.StarterAssets
+      value: MicroDuckSpawner, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
@@ -3719,10 +3703,6 @@ PrefabInstance:
       value: Contact Spawn Trigger
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
-      propertyPath: m_ObjectSpawner
-      value: 
-      objectReference: {fileID: 3339367952642848919}
-    - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_InteractionGroup
       value: 
       objectReference: {fileID: 859454729401617338}
@@ -3748,7 +3728,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets.ObjectSpawner, Unity.XR.Interaction.Toolkit.Samples.StarterAssets
+      value: MicroDuckSpawner, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
@@ -3830,10 +3810,6 @@ PrefabInstance:
       value: Contact Spawn Trigger
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
-      propertyPath: m_ObjectSpawner
-      value: 
-      objectReference: {fileID: 3339367952642848919}
-    - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_InteractionGroup
       value: 
       objectReference: {fileID: 6119050434896609382}
@@ -3859,7 +3835,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: UnityEngine.XR.Interaction.Toolkit.Samples.StarterAssets.ObjectSpawner, Unity.XR.Interaction.Toolkit.Samples.StarterAssets
+      value: MicroDuckSpawner, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 7099184509170957891, guid: 60394d111cf239d4eaca503e74e2f64b, type: 3}
       propertyPath: m_ObjectSpawnTriggered.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
