@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Microduck AR UI kit</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+/*
+  UNITS
+  Design at 1x px. World scale for Unity: 1 px = 0.5 mm at 1 m (0.0005 m per px).
+  So 48 px = 2.4 cm (minimum hand-tracking target), 360 px = 18 cm.
+  The sheet below is shown at zoom .55 so it fits a laptop screen.
+*/
+:root{
+  --scene:#2a2d31;
+  --glass:rgba(22,24,28,.84);
+  --line:rgba(255,255,255,.16);
+  --text:#f5f6f8;
+  --text-2:rgba(245,246,248,.68);
+  --accent:#6ab0ff;  --accent-bg:rgba(106,176,255,.20);
+  --ok:#3ddc97;      --ok-bg:rgba(61,220,151,.20);
+  --warn:#ffc24d;    --warn-bg:rgba(255,194,77,.20);
+  --err:#ff6b6b;     --err-bg:rgba(255,107,107,.20);
+  --path:#2dd4bf;
+  --r-panel:24px; --r-btn:24px; --hit:48px;
+  --fs-cap:24px; --fs-body:28px; --fs-title:32px;
+  --font:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--scene);color:var(--text);font-family:var(--font)}
+.sheet{zoom:.55;padding:64px;display:grid;gap:72px}
+.sec h3{margin:0 0 6px;font-size:36px;font-weight:600}
+.sec .spec{margin:0 0 28px;font-size:24px;color:var(--text-2);max-width:1400px;line-height:1.4}
+.demo{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.cap{margin-top:12px;font-size:22px;color:var(--text-2)}
+.col{display:flex;flex-direction:column;align-items:flex-start}
+
+/* ---------- shared ---------- */
+.ib{width:var(--hit);height:var(--hit);border-radius:24px;border:0;background:transparent;color:var(--text);
+    display:inline-grid;place-items:center;font-size:28px;cursor:pointer;padding:0}
+.ib:hover{background:rgba(255,255,255,.12)}
+.ib:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ib[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent)}
+.chip{height:36px;padding:0 14px;border-radius:18px;font-size:var(--fs-cap);font-weight:500;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.err{background:var(--err-bg);color:var(--err)}
+.panel{background:var(--glass);border:2px solid var(--line);border-radius:var(--r-panel);overflow:hidden}
+.panel-h{height:64px;display:flex;align-items:center;gap:8px;padding:0 8px 0 20px;border-bottom:2px solid var(--line);font-size:var(--fs-body);font-weight:600}
+.panel-h .t{flex:1;display:flex;align-items:center;gap:12px}
+
+/* ---------- voice indicator ---------- */
+.voice{display:inline-flex;align-items:center;gap:16px;height:72px;padding:8px;border-radius:36px;background:var(--glass);border:2px solid var(--line);font-size:var(--fs-title)}
+.voice .mic{width:56px;height:56px;border-radius:28px;border:0;background:rgba(255,255,255,.10);color:var(--text);font-size:30px;display:grid;place-items:center;cursor:pointer}
+.voice .body{display:flex;align-items:center;gap:16px;min-width:360px}
+.voice .txt{flex:1}
+.voice .close{width:48px;height:48px;border-radius:24px}
+.voice[data-s="listening"]{border-color:var(--accent)}
+.voice[data-s="listening"] .mic{background:var(--accent-bg);color:var(--accent)}
+.voice[data-s="heard"]{border-color:var(--ok)}
+.voice[data-s="unclear"]{border-color:var(--warn)}
+.voice[data-s="muted"] .mic{background:var(--err-bg);color:var(--err)}
+.voice.is-collapsed{padding:8px}
+.voice.is-collapsed .body,.voice.is-collapsed .close{display:none}
+.bars{display:flex;gap:4px;align-items:center;height:32px}
+.bars i{width:6px;height:32px;border-radius:3px;background:var(--accent);transform:scaleY(.3)}
+@keyframes bar{50%{transform:scaleY(1)}}
+@media (prefers-reduced-motion:no-preference){
+  .bars i{animation:bar .9s ease-in-out infinite}
+  .bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}
+  .bars i:nth-child(4){animation-delay:.45s}.bars i:nth-child(5){animation-delay:.6s}
+}
+
+/* ---------- camera panel ---------- */
+.cam{width:360px}
+.cam-feed{position:relative;aspect-ratio:16/9;background:#14161a}
+.cam-feed .live{position:absolute;top:12px;left:12px}
+.cam-feed .fps{position:absolute;right:14px;bottom:10px;font-size:var(--fs-cap);color:var(--text-2)}
+
+/* ---------- details panel ---------- */
+.det{width:320px;font-variant-numeric:tabular-nums}
+.det .rows{padding:8px 0}
+.row{height:56px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font-size:var(--fs-body)}
+.row .k{color:var(--text-2)}
+.bar{margin:0 20px 12px;height:8px;border-radius:4px;background:rgba(255,255,255,.14)}
+.bar i{display:block;height:100%;width:82%;border-radius:4px;background:var(--ok)}
+
+/* ---------- wrist menu (palm, vertical) + bar variant ---------- */
+.wrist{display:inline-flex;flex-direction:column;gap:8px;padding:12px;border-radius:32px;background:var(--glass);border:2px solid var(--line)}
+.wbtn{width:88px;height:96px;border-radius:var(--r-btn);border:0;background:transparent;color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:var(--fs-cap);font-family:inherit;cursor:pointer}
+.wbtn i{font-size:36px}
+.wbtn:hover{background:rgba(255,255,255,.12)}
+.wbtn[aria-pressed="true"]{background:var(--accent-bg);color:var(--accent)}
+.wrist--bar{flex-direction:row;padding:8px;border-radius:44px}
+.wrist--bar .wbtn{flex-direction:row;width:auto;height:72px;padding:0 28px;border-radius:36px;gap:12px;font-size:var(--fs-body)}
+
+/* ---------- world-space: highlight, status tag, target, trajectory ---------- */
+.hl{position:relative;width:120px;height:150px;margin:24px}
+.hl .obj{position:absolute;inset:0;border:3px solid rgba(255,255,255,.35);border-radius:10px}
+.hl .box{position:absolute;inset:-16px;border:4px solid var(--warn);border-radius:16px}
+.hl .lab{position:absolute;left:-16px;top:-68px;height:44px;padding:0 18px;border-radius:22px;background:var(--warn);color:#1a1400;font-size:26px;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.hl[data-s="hover"] .box{border-width:3px;border-color:rgba(255,194,77,.7)}
+.hl[data-s="selected"] .box{border-width:6px;background:var(--warn-bg)}
+.hl[data-s="busy"] .box{border-style:dashed;border-color:rgba(255,255,255,.55)}
+.hl[data-s="busy"] .lab{background:rgba(255,255,255,.18);color:var(--text)}
+.tag{display:inline-flex;align-items:center;gap:12px;height:56px;padding:0 20px;border-radius:28px;background:var(--glass);border:2px solid var(--line);font-size:26px;white-space:nowrap}
+.tag .dot{width:16px;height:16px;border-radius:50%;background:var(--c,var(--text-2))}
+.target{position:relative;width:120px;height:120px;border-radius:50%;border:12px solid var(--c,var(--path));background:color-mix(in srgb,var(--c,var(--path)) 18%,transparent)}
+.target::after{content:"";position:absolute;left:50%;top:-44px;width:0;height:0;margin-left:-16px;border:16px solid transparent;border-bottom:28px solid var(--c,var(--path))}
+.ghost{width:60px;height:36px;border-radius:10px;border:3px dashed rgba(255,255,255,.55);background:rgba(255,255,255,.10)}
+
+/* ---------- input feedback ---------- */
+.ret{position:relative;width:64px;height:64px;border-radius:50%;border:4px solid rgba(255,255,255,.6)}
+.ret::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:rgba(255,255,255,.6)}
+.ret[data-s="hover"]{border-color:var(--accent)}.ret[data-s="hover"]::after{background:var(--accent)}
+.ret[data-s="pinch"]{border-color:var(--accent);background:var(--accent-bg);transform:scale(.8)}
+.ret[data-s="pinch"]::after{background:var(--accent)}
+.gest{width:56px;height:56px;border-radius:28px;background:var(--glass);border:2px solid var(--line);display:grid;place-items:center;font-size:30px}
+.hint{display:inline-flex;align-items:center;gap:32px;height:64px;padding:0 28px;border-radius:32px;background:var(--glass);border:2px solid var(--line);font-size:var(--fs-body)}
+.hint span{display:inline-flex;align-items:center;gap:12px}
+.hint i{font-size:32px}
+.state{display:inline-flex;align-items:center;height:48px;padding:0 20px;border-radius:24px;background:rgba(255,255,255,.12);font-size:26px;font-weight:500}
+.dbg{width:360px;font-variant-numeric:tabular-nums}
+.dbg .row{height:44px;font-size:var(--fs-cap)}
+.stop{display:inline-flex;align-items:center;gap:16px;height:72px;padding:0 32px;border-radius:36px;background:var(--err);color:#1a0505;font-size:var(--fs-title);font-weight:600}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<section class="sec">
+  <h3>Voice</h3>
+  <div class="demo">
+    <div class="col"><div class="voice" data-s="idle"><button class="mic" aria-label="Mute microphone"><i class="ti ti-microphone"></i></button><div class="body"><span class="txt">Say a command</span></div><button class="ib close" aria-label="Collapse transcript"><i class="ti ti-x"></i></button></div><div class="cap">idle</div></div>
+    <div class="col"><div class="voice" data-s="listening"><button class="mic" aria-label="Mute microphone"><i class="ti ti-microphone"></i></button><div class="body"><span class="bars"><i></i><i></i><i></i><i></i><i></i></span><span class="txt">Listening…</span></div><button class="ib close" aria-label="Collapse transcript"><i class="ti ti-x"></i></button></div><div class="cap">listening</div></div>
+    <div class="col"><div class="voice" data-s="heard"><button class="mic" aria-label="Mute microphone"><i class="ti ti-microphone"></i></button><div class="body"><span class="txt">“pick up”</span><span class="chip ok">Pick up · 94%</span></div><button class="ib close" aria-label="Collapse transcript"><i class="ti ti-x"></i></button></div><div class="cap">heard</div></div>
+    <div class="col"><div class="voice" data-s="unclear"><button class="mic" aria-label="Mute microphone"><i class="ti ti-microphone"></i></button><div class="body"><span class="txt">Didn’t catch that</span><span class="chip warn">Low confidence</span></div><button class="ib close" aria-label="Collapse transcript"><i class="ti ti-x"></i></button></div><div class="cap">unclear</div></div>
+    <div class="col"><div class="voice" data-s="muted"><button class="mic" aria-label="Unmute microphone"><i class="ti ti-microphone-off"></i></button><div class="body"><span class="txt">Mic muted</span></div><button class="ib close" aria-label="Collapse transcript"><i class="ti ti-x"></i></button></div><div class="cap">muted</div></div>
+    <div class="col"><div class="voice is-collapsed" data-s="listening"><button class="mic" aria-label="Mute microphone"><i class="ti ti-microphone"></i></button></div><div class="cap">collapsed</div></div>
+  </div>
+</section>
+
+<section class="sec">
+  <h3>Floating Panels</h3>
+  <div class="demo">
+    <div class="panel cam">
+      <div class="panel-h"><span class="t"><i class="ti ti-video"></i>Camera</span>
+        <button class="ib" aria-label="Close camera panel"><i class="ti ti-x"></i></button></div>
+      <div class="cam-feed"><span class="chip err live"><i class="ti ti-point"></i>Live</span><span class="fps">24 fps</span></div>
+    </div>
+    <div class="panel det">
+      <div class="panel-h"><span class="t"><i class="ti ti-info-circle"></i>Details</span>
+        <button class="ib" aria-label="Close details panel"><i class="ti ti-x"></i></button></div>
+      <div class="rows">
+        <div class="row"><span class="k">State</span><span>Walking</span></div>
+        <div class="row" style="height:48px"><span class="k">Battery</span><span>82%</span></div>
+        <div class="bar"><i></i></div>
+        <div class="row"><span class="k">Latency</span><span>120 ms</span></div>
+        <div class="row"><span class="k">Link</span><span style="color:var(--ok)">Connected</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <h3>Panel Switcher</h3>
+  <div class="demo">
+    <div class="wrist wrist--bar">
+      <button class="wbtn" aria-pressed="true"><i class="ti ti-microphone"></i>Voice</button>
+      <button class="wbtn" aria-pressed="true"><i class="ti ti-video"></i>Camera</button>
+      <button class="wbtn" aria-pressed="true"><i class="ti ti-info-circle"></i>Details</button>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <h3>World</h3>
+  <div class="demo">
+    <div class="col"><div class="hl" data-s="hover"><div class="obj"></div><div class="box"></div></div><div class="cap">hover</div></div>
+    <div class="col"><div class="hl" data-s="selected"><div class="obj"></div><div class="box"></div></div><div class="cap">selected</div></div>
+    
+    <div class="col" style="padding-top:44px"><div class="target"></div><div class="cap">target, valid</div></div>
+    <div class="col" style="padding-top:44px"><div class="target" style="--c:var(--err)"></div><div class="cap">blocked</div></div>
+    <div class="col" style="padding-top:44px"><div class="target" style="--c:var(--warn)"></div><div class="cap">uncertain</div></div>
+  </div>
+</section>
+
+<section class="sec">
+  <h3>Input</h3>
+  <div class="demo" style="align-items:center">
+    <div class="col"><div class="ret"></div><div class="cap">idle</div></div>
+    <div class="col"><div class="ret" data-s="hover"></div><div class="cap">hover</div></div>
+    <div class="col"><div class="ret" data-s="pinch"></div><div class="cap">pinch</div></div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
