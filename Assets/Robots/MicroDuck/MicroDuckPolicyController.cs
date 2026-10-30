@@ -42,6 +42,9 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     const int FreeJoint = (int)MujocoLib.mjtJoint.mjJNT_FREE;
     const double PhysicsPeriod = 0.005;
     const int SubstepsPerPolicy = 4;
+    const float CommandSmoothing = 0.2f;
+    const float StandingThreshold = 0.05f;
+    const double CommandTimeout = 0.5;
 
     static readonly ProfilerMarker SurfaceScanMarker = new("MicroDuck.SurfaceScan");
     static readonly ProfilerMarker SceneXmlMarker = new("MicroDuck.SceneXml");
@@ -80,6 +83,8 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     int substepsSincePolicy;
     bool initialized;
     Vector3 command;
+    Vector3 requestedCommand;
+    double commandUpdatedAt = double.NegativeInfinity;
     MicroDuckSurfaces surfaces;
     double nextSurfaceRefresh;
     MicroDuckPerformance performance;
@@ -125,8 +130,12 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             SavePerformanceCapture();
     }
 
-    public void SetVelocityCommand(float forward, float left, float yawRate) =>
-        command = new Vector3(forward, left, yawRate);
+    // Robot-relative m/s, m/s, rad/s. Call continuously; stale requests stop walking.
+    public void SetVelocityCommand(float forward, float left, float yawRate)
+    {
+        requestedCommand = new Vector3(forward, left, yawRate);
+        commandUpdatedAt = Time.realtimeSinceStartupAsDouble;
+    }
 
     void OnEnable()
     {
@@ -211,7 +220,6 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         ValidateAnchor();
         // Reuse the prepared workers/model/data, but not its old anchor-relative
         // contacts, gravity, actions or clocks. No simulation ran while hidden.
-        command = Vector3.zero;
         MujocoLib.mj_resetData(model, data);
         InitializeNativeState();
         RefreshSurfaces();
@@ -359,6 +367,8 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     unsafe void InitializeNativeState()
     {
+        command = requestedCommand = Vector3.zero;
+        commandUpdatedAt = double.NegativeInfinity;
         Array.Clear(lastAction, 0, lastAction.Length);
         substepsSincePolicy = 0;
         nextSurfaceRefresh = 0.25;
@@ -548,6 +558,11 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     unsafe void StepPolicy()
     {
+        // Match robotd's command EMA at the policy's 50 Hz, not Unity's frame rate.
+        var target = Time.realtimeSinceStartupAsDouble - commandUpdatedAt <= CommandTimeout
+            ? requestedCommand
+            : Vector3.zero;
+        command += CommandSmoothing * (target - command);
         input.CompleteAllPendingOperations();
         // mjOBJ_BODY velocity is in the inertial frame, not the policy's IMU frame.
         var gyroX = (float)data->sensordata[gyroAddress];
@@ -581,7 +596,9 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         input[48] = command.x;
         input[49] = command.y;
         input[50] = command.z;
-        var output = RunPolicy(command.sqrMagnitude > 0f ? walkingWorker : standingWorker);
+        var output = RunPolicy(command.sqrMagnitude > StandingThreshold * StandingThreshold
+            ? walkingWorker
+            : standingWorker);
         var actions = output.AsReadOnlyNativeArray();
         for (var i = 0; i < JointCount; i++)
             if (float.IsNaN(actions[i]) || float.IsInfinity(actions[i]))

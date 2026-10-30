@@ -11,7 +11,11 @@ movement, Space/Shift up/down and left-click placement. Desktop scripts and the
 AR simulation environment live in Assets/Desktop; robot code/assets live in
 Assets/Robots/MicroDuck. For Quest, install Unity's Android Build Support module,
 select the Android build profile and build MainScene for ARM64. Use the existing
-XR placement gesture; one duck is allowed at a time.
+XR placement gesture; one duck is allowed at a time. The duck waits for joystick
+input: left stick forward/back (up to +/-0.4 m/s) and sideways (+/-0.3 m/s), right
+stick horizontal turns (+/-1 rad/s), all relative to the duck. Release to stand.
+Both controllers must be tracked; centre the sticks after spawning, reconnecting,
+or returning from focus/pause before driving. Hands-only tracking leaves it standing.
 
 Share source through Git: Assets, Packages, ProjectSettings, Tools and the source
 submodule reference. Keep .meta files with their assets. Put player builds under
@@ -46,9 +50,20 @@ tests for source-model pruning can be run with:
 
 Runtime: MicroDuckSpawner prepares one hidden duck before placement, warming the
 native world and both CPU policies; placement reuses resources and resets state.
-Physics runs at 200 Hz and policy inference at 50 Hz. MicroDuckWalkDemo stands
-for five simulation seconds, then commands 0.3 m/s forward. Native body poses
-drive CAD through ROS-to-Unity (-y,z,x); the spawn anchor must have unit world
+Physics runs at 200 Hz and policy inference at 50 Hz. MicroDuckJoystick replaces
+the automatic walk demo. It reads raw OpenXR sticks through the Input System,
+using the official per-axis 0.1 dead zone without rescaling. The policy controller
+smooths commands with alpha 0.2 at 50 Hz and selects standing at command magnitude
+<=0.05. SetVelocityCommand must be refreshed continuously: requests expire after
+0.5 real seconds. Release, tracking loss, focus/pause loss and disabling joystick
+input request zero velocity without disabling physical balancing. Placement resets
+command history. These are velocity requests, not guaranteed motion or drift correction.
+The current checked-in walking policy barely translates under pure lateral requests
+in the native smoke run; forward-plus-sideways does move diagonally. Do not treat
+the command limits as achieved speeds or guaranteed strafing.
+Official command handling: https://github.com/pollen-robotics/microduck/tree/main/pad-map
+and https://github.com/pollen-robotics/microduck/blob/main/robotd/src/control.rs
+Native body poses drive CAD through ROS-to-Unity (-y,z,x); the spawn anchor must have unit world
 scale. MicroDuckSurfaces captures static/kinematic boxes and meshes on AR and
 simulation layers 7/30; there is no implicit floor. Shape/add/remove rebuilds
 preserve robot integration state and policy history. Dynamic PhysX interaction,

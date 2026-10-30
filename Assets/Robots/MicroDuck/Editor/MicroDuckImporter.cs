@@ -347,8 +347,8 @@ public static class MicroDuckImporter
         var controller = root.GetComponent<MicroDuckPolicyController>();
         if (controller == null)
             controller = root.AddComponent<MicroDuckPolicyController>();
-        if (root.GetComponent<MicroDuckWalkDemo>() == null)
-            root.AddComponent<MicroDuckWalkDemo>();
+        if (root.GetComponent<MicroDuckJoystick>() == null)
+            root.AddComponent<MicroDuckJoystick>();
         using var serialized = new SerializedObject(controller);
         serialized.FindProperty("standingModel").objectReferenceValue = standing;
         serialized.FindProperty("walkingModel").objectReferenceValue = walking;

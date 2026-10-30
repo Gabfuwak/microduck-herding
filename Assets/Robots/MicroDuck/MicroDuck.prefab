@@ -1927,7 +1927,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cb9357f2849467fbbf90255c2ddc698, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckWalkDemo
+  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckJoystick
 --- !u!1 &2815090826019926257
 GameObject:
   m_ObjectHideFlags: 0
