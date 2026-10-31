@@ -1,0 +1,22 @@
+{
+  "repository": "https://huggingface.co/pollen-robotics/microduck-policies",
+  "revision": "665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448",
+  "sha256": "2fc7f8ee6acd7d0d3f66a99927b5d5a56589aeed02ec714de329b252d5ccf492",
+  "policy": {
+    "file": "velstand.onnx",
+    "kind": "perpetual",
+    "slot": "walk",
+    "entry_pose": "standing",
+    "description": "Walking gait that also stands still at zero command; the default walk policy since v5, with no separate standing network. From v7 the body is steerable while standing: the body_pose roll/pitch command tilts the trunk (about +-10 deg), as alpha_stand did. From v8 it gets up from a fall smoothly and reliably instead of violently or getting stuck on its back, and yaw commands are tracked (turning in place and while walking now reaches the commanded rate).",
+    "training": {
+      "task_id": "Mjlab-VelStand-Rough-Backlash-MicroDuck",
+      "repo": "pollen-robotics/microduck_rl",
+      "commit": "3750776",
+      "branch": "improve_standup_velstand",
+      "dirty": false,
+      "run": "pollen-robotics/mjlab_microduck/0045i2si",
+      "checkpoint": 2749,
+      "exported": "2026-10-12T00:00:00Z"
+    }
+  }
+}

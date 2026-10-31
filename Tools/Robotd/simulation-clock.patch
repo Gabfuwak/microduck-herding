@@ -1,0 +1,412 @@
+diff --git a/duck-control/src/io.rs b/duck-control/src/io.rs
+index 498fd3f..afe8b9e 100644
+--- a/duck-control/src/io.rs
++++ b/duck-control/src/io.rs
+@@ -112,7 +112,22 @@ pub struct ImuStale {
+     pub run: u64,
+ }
+ 
++/// A simulator-controlled control boundary. Waiting does not execute another control tick.
++#[derive(Debug, Clone, Copy)]
++pub struct SimulationTick {
++    pub time: std::time::Duration,
++    pub advance: bool,
++}
++
+ pub trait RobotIo {
++    /// Optional lockstep pacing. Hardware and protocol-1 simulators keep the wall-clock ticker.
++    fn begin_tick(&mut self, _period: std::time::Duration) -> Result<Option<SimulationTick>> {
++        Ok(None)
++    }
++    fn end_tick(&mut self) -> Result<()> {
++        Ok(())
++    }
++
+     /// One transaction: joints and IMU together.
+     fn read(&mut self) -> Result<Sensors>;
+     fn write(&mut self, targets: &JointTargets) -> Result<()>;
+diff --git a/duck-control/src/safety.rs b/duck-control/src/safety.rs
+index 14db58c..3c3fb4d 100644
+--- a/duck-control/src/safety.rs
++++ b/duck-control/src/safety.rs
+@@ -175,6 +175,16 @@ impl<T: RobotIo> Safety<T> {
+         }
+     }
+ 
++    pub fn begin_tick(
++        &mut self,
++        period: Duration,
++    ) -> Result<Option<crate::io::SimulationTick>, IoError> {
++        self.io.begin_tick(period)
++    }
++    pub fn end_tick(&mut self) -> Result<(), IoError> {
++        self.io.end_tick()
++    }
++
+     pub fn read(&mut self) -> Result<Sensors, IoError> {
+         self.io.read()
+     }
+diff --git a/duck-control/src/sim.rs b/duck-control/src/sim.rs
+index a56e3b0..5ea2f42 100644
+--- a/duck-control/src/sim.rs
++++ b/duck-control/src/sim.rs
+@@ -69,6 +69,16 @@ enum Request<'a> {
+     Torque { on: bool },
+     #[serde(rename = "slow")]
+     Slow,
++    #[serde(rename = "tick")]
++    Tick { period_us: u64 },
++    #[serde(rename = "commit")]
++    Commit,
++}
++
++#[derive(Debug, Deserialize)]
++struct TickReply {
++    time_us: u64,
++    advance: bool,
+ }
+ 
+ #[derive(Debug, Deserialize)]
+@@ -125,6 +135,8 @@ pub struct RemoteIo {
+     /// nothing is connected until the first read, so there is no earlier moment at which this
+     /// could be known.
+     load_reported: bool,
++    lockstep: bool,
++    last_tick: Option<Duration>,
+ }
+ 
+ struct Link {
+@@ -141,9 +153,17 @@ impl RemoteIo {
+             link: None,
+             complained: false,
+             load_reported: false,
++            lockstep: false,
++            last_tick: None,
+         }
+     }
+ 
++    /// Protocol 2 adds explicit control boundaries, without altering the motor/sensor payloads.
++    pub fn with_lockstep(mut self, enabled: bool) -> Self {
++        self.lockstep = enabled;
++        self
++    }
++
+     fn connect(&mut self) -> Result<&mut Link> {
+         if self.link.is_none() {
+             let address = self
+@@ -182,22 +202,23 @@ impl RemoteIo {
+                 read,
+             };
+ 
++            let protocol = if self.lockstep { 2 } else { PROTOCOL };
+             let hello: Hello = exchange(
+                 &mut link,
+                 &Request::Hello {
+-                    protocol: PROTOCOL,
++                    protocol,
+                     joints: NUM_JOINTS,
+                 },
+             )?;
+-            if hello.protocol != PROTOCOL {
++            if hello.protocol != protocol {
+                 return Err(IoError::Bus(format!(
+-                    "the simulator speaks protocol {} and this daemon speaks {PROTOCOL} — one of \
++                    "the simulator speaks protocol {} and this daemon speaks {protocol} — one of \
+                      the two is out of date, and they are in different repositories",
+                     hello.protocol
+                 )));
+             }
+ 
+-            tracing::info!(addr = %self.addr, protocol = PROTOCOL, "simulated body");
++            tracing::info!(addr = %self.addr, protocol, "simulated body");
+             self.complained = false;
+             self.link = Some(link);
+         }
+@@ -259,6 +280,8 @@ fn tag(request: &Request<'_>) -> &'static str {
+         Request::Gain { .. } => "gain",
+         Request::Torque { .. } => "torque",
+         Request::Slow => "slow",
++        Request::Tick { .. } => "tick",
++        Request::Commit => "commit",
+     }
+ }
+ 
+@@ -270,6 +293,38 @@ fn acked(ack: Ack, what: &str) -> Result<()> {
+ }
+ 
+ impl RobotIo for RemoteIo {
++    fn begin_tick(&mut self, period: Duration) -> Result<Option<crate::io::SimulationTick>> {
++        if !self.lockstep {
++            return Ok(None);
++        }
++        let frame: TickReply = self.call(&Request::Tick {
++            period_us: period.as_micros() as u64,
++        })?;
++        let time = Duration::from_micros(frame.time_us);
++        if frame.advance {
++            if let Some(last) = self.last_tick {
++                if time != last + period {
++                    return Err(IoError::Bus(format!(
++                        "simulation clock jumped from {last:?} to {time:?}; expected {:?}",
++                        last + period
++                    )));
++                }
++            }
++            self.last_tick = Some(time);
++        }
++        Ok(Some(crate::io::SimulationTick {
++            time,
++            advance: frame.advance,
++        }))
++    }
++    fn end_tick(&mut self) -> Result<()> {
++        if !self.lockstep {
++            return Ok(());
++        }
++        let ack: Ack = self.call(&Request::Commit)?;
++        acked(ack, "control tick")
++    }
++
+     fn read(&mut self) -> Result<Sensors> {
+         let frame: SensorFrame = self.call(&Request::Read)?;
+         self.load_reported = frame.currents_ma.is_some();
+@@ -361,6 +416,36 @@ mod tests {
+         (addr, handle)
+     }
+ 
++    #[test]
++    fn lockstep_waits_commits_and_checks_its_clock() {
++        let (addr, sim) = simulator(vec![vec![
++            r#"{"protocol":2}"#,
++            r#"{"time_us":0,"advance":false}"#,
++            r#"{"time_us":0,"advance":true}"#,
++            "{}",
++            r#"{"time_us":20000,"advance":true}"#,
++            "{}",
++            r#"{"time_us":20000,"advance":true}"#,
++        ]]);
++        let mut io = RemoteIo::at(addr).with_lockstep(true);
++        let dt = Duration::from_millis(20);
++        assert!(!io.begin_tick(dt).unwrap().unwrap().advance);
++        assert_eq!(io.begin_tick(dt).unwrap().unwrap().time, Duration::ZERO);
++        io.end_tick().unwrap();
++        assert_eq!(io.begin_tick(dt).unwrap().unwrap().time, dt);
++        io.end_tick().unwrap();
++        assert!(
++            io.begin_tick(dt)
++                .unwrap_err()
++                .to_string()
++                .contains("clock jumped")
++        );
++        let heard = sim.join().unwrap();
++        assert!(heard[0].contains(r#""protocol":2"#));
++        assert!(heard[1].contains(r#""period_us":20000"#));
++        assert!(heard[3].contains("commit"));
++    }
++
+     const HELLO: &str = r#"{"protocol":1}"#;
+     // One line, because the protocol is one frame per line and a test fixture that wraps would be
+     // testing the fixture.
+diff --git a/robotd/src/intents.rs b/robotd/src/intents.rs
+index 577fdf8..c178abb 100644
+--- a/robotd/src/intents.rs
++++ b/robotd/src/intents.rs
+@@ -137,6 +137,7 @@ pub enum WheeeHold {
+ pub struct Intents {
+     /// Epoch for every stamp. `Instant` so the clock cannot run backwards under us.
+     epoch: Instant,
++    simulation_us: std::sync::atomic::AtomicU64,
+     twist: ArcSwap<Stamped<[f64; 3]>>,
+     head: ArcSwap<Stamped<[f64; 4]>>,
+     /// Standing body pose. Unstamped: `active: false` is its own "nobody is posing".
+@@ -266,6 +267,7 @@ impl Intents {
+         let epoch = Instant::now();
+         Self {
+             epoch,
++            simulation_us: std::sync::atomic::AtomicU64::new(u64::MAX),
+             // Stamped at zero, so before any client connects the twist already reads as
+             // maximally stale and the deadman holds the robot still. Starting "fresh" would
+             // mean a robot that briefly believes it has a live driver.
+@@ -300,7 +302,26 @@ impl Intents {
+     }
+ 
+     fn now_us(&self) -> u64 {
+-        self.epoch.elapsed().as_micros() as u64
++        let sim = self.simulation_us.load(Ordering::Acquire);
++        if sim == u64::MAX {
++            self.epoch.elapsed().as_micros() as u64
++        } else {
++            sim
++        }
++    }
++
++    pub fn set_simulation_time(&self, time: Duration) {
++        self.simulation_us
++            .store(time.as_micros() as u64, Ordering::Release);
++    }
++
++    pub fn control_now(&self) -> Instant {
++        let sim = self.simulation_us.load(Ordering::Acquire);
++        if sim == u64::MAX {
++            Instant::now()
++        } else {
++            self.epoch + Duration::from_micros(sim)
++        }
+     }
+ 
+     pub fn set_twist(&self, twist: [f64; 3]) {
+@@ -718,3 +739,23 @@ mod tests {
+         assert_eq!(intents.snapshot().command.body, BodyPose::default());
+     }
+ }
++
++#[cfg(test)]
++mod simulation_clock_tests {
++    use super::*;
++    #[test]
++    fn simulated_command_age_and_control_clock_advance_together() {
++        let intents = Intents::new();
++        intents.set_simulation_time(Duration::from_secs(2));
++        intents.set_twist([0.2, 0.0, 0.0]);
++        let before = intents.control_now();
++        std::thread::sleep(Duration::from_millis(5));
++        assert_eq!(intents.snapshot().twist_age, Duration::ZERO);
++        intents.set_simulation_time(Duration::from_millis(2520));
++        assert_eq!(intents.snapshot().twist_age, Duration::from_millis(520));
++        assert_eq!(
++            intents.control_now().duration_since(before),
++            Duration::from_millis(520)
++        );
++    }
++}
+diff --git a/robotd/src/main.rs b/robotd/src/main.rs
+index 762980b..1308272 100644
+--- a/robotd/src/main.rs
++++ b/robotd/src/main.rs
+@@ -262,6 +262,10 @@ struct Args {
+     #[arg(long, conflicts_with = "fake")]
+     sim: Option<String>,
+ 
++    /// Let a protocol-2 simulator pace the control loop and its behavioral clock.
++    #[arg(long, requires = "sim")]
++    sim_lockstep: bool,
++
+     /// Do not load a policy: run the loop and hold the startup pose.
+     ///
+     /// Distinct from a policy that failed to load, which is unhealthy. This is the
+@@ -615,6 +619,7 @@ struct RobotState {
+     missed: AtomicU64,
+     /// Microseconds since `started` at the last completed tick.
+     last_tick_us: AtomicU64,
++    simulation_mode: AtomicBool,
+     /// Achieved rate over the last window, as `f64::to_bits`. Zero until the first window
+     /// closes, which is why the stall check carries the first second.
+     achieved_hz: AtomicU64,
+@@ -803,6 +808,7 @@ impl RobotState {
+             ticks: AtomicU64::new(0),
+             missed: AtomicU64::new(0),
+             last_tick_us: AtomicU64::new(0),
++            simulation_mode: AtomicBool::new(false),
+             achieved_hz: AtomicU64::new(0),
+             consecutive_errors: AtomicU32::new(0),
+             startup_bus_failures: AtomicU32::new(0),
+@@ -992,7 +998,7 @@ impl RobotState {
+         }
+ 
+         let hz = f64::from_bits(self.achieved_hz.load(Ordering::Relaxed));
+-        if hz > 0.0 && hz < self.min_achieved_hz {
++        if hz > 0.0 && hz < self.min_achieved_hz && !self.simulation_mode.load(Ordering::Relaxed) {
+             return unhealthy(format!(
+                 "control loop at {hz:.1} Hz, below the {:.1} Hz floor",
+                 self.min_achieved_hz
+@@ -1174,6 +1180,9 @@ async fn main() -> ExitCode {
+     }
+ 
+     let intents = Arc::new(Intents::new());
++    if args.sim_lockstep {
++        intents.set_simulation_time(Duration::ZERO);
++    }
+ 
+     start_head_imu(&state, &params, args.fake || args.sim.is_some());
+ 
+@@ -1316,6 +1325,7 @@ fn spawn_control_thread(
+     let period = params.period();
+     let fake = args.fake;
+     let sim = args.sim.clone();
++    let sim_lockstep = args.sim_lockstep;
+     let bus = params.bus.clone();
+     let params = params.clone();
+     // So a reload can re-read `[policy]` without a restart. The path rather than the loaded
+@@ -1360,7 +1370,7 @@ fn spawn_control_thread(
+             if let Some(addr) = sim {
+                 tracing::warn!(%addr, "--sim: the body is in MuJoCo");
+                 runtime.block_on(control_loop(
+-                    duck_control::sim::RemoteIo::at(addr),
++                    duck_control::sim::RemoteIo::at(addr).with_lockstep(sim_lockstep),
+                     state,
+                     intents,
+                     params,
+@@ -2461,8 +2471,32 @@ async fn control_loop<T: RobotIo>(
+     // republishes the last fresh sample, so it must republish that sample's read time too.
+     let mut sensors_read_ns = 0u64;
+     while !state.shutdown.load(Ordering::Relaxed) {
+-        ticker.tick().await;
+-        let tick_start = Instant::now();
++        match safety.begin_tick(period) {
++            Ok(None) => {
++                ticker.tick().await;
++            }
++            Ok(Some(tick)) => {
++                state.simulation_mode.store(true, Ordering::Relaxed);
++                if !tick.advance {
++                    // This is an explicit, successful simulator heartbeat, not a completed tick.
++                    state.last_tick_us.store(
++                        state.started.elapsed().as_micros() as u64,
++                        Ordering::Relaxed,
++                    );
++                    tokio::time::sleep(Duration::from_millis(1)).await;
++                    continue;
++                }
++                intents.set_simulation_time(tick.time);
++            }
++            Err(error) => {
++                state.consecutive_errors.fetch_add(1, Ordering::Relaxed);
++                tracing::warn!(%error, "simulation tick refused");
++                tokio::time::sleep(period).await;
++                continue;
++            }
++        };
++        let wall_tick_start = Instant::now();
++        let tick_start = intents.control_now();
+ 
+         let read_at = proto::clock::monotonic_ns();
+         let fresh = match safety.read() {
+@@ -3926,7 +3960,7 @@ async fn control_loop<T: RobotIo>(
+             singing: chorale_state.as_ref().is_some_and(|c| c.part.is_some()),
+             odom: (odometry.position(), odometry.yaw()),
+             fresh: fresh.as_ref(),
+-            overran: tick_start.elapsed() > period,
++            overran: wall_tick_start.elapsed() > period,
+             flashlight: state.flashlight.load(Ordering::Relaxed) != 0,
+             // What a client asked the beak to do, or the chorale singing through it.
+             mouth: snapshot.mouth.max(chorale_mouth),
+@@ -4002,7 +4036,7 @@ async fn control_loop<T: RobotIo>(
+             state.started.elapsed().as_micros() as u64,
+             Ordering::Relaxed,
+         );
+-        if tick_start.elapsed() > period {
++        if wall_tick_start.elapsed() > period {
+             state.missed.fetch_add(1, Ordering::Relaxed);
+         }
+ 
+@@ -4067,6 +4101,10 @@ async fn control_loop<T: RobotIo>(
+                 bus_drops_window = 0;
+             }
+         }
++        if let Err(error) = safety.end_tick() {
++            state.consecutive_errors.fetch_add(1, Ordering::Relaxed);
++            tracing::warn!(%error, "simulation tick commit failed");
++        }
+     }
+     // The last second's counting, waiting for the book this once: the loop has no deadline left.
+     vettally.handoff(

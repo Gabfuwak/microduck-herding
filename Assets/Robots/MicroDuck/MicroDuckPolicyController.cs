@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.IO;
 using Unity.Profiling;
+using Newtonsoft.Json;
 using Stopwatch = System.Diagnostics.Stopwatch;
 using Mujoco;
 using Unity.InferenceEngine;
@@ -32,6 +33,28 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     [SerializeField] NativeAsset[] nativeAssets;
     [SerializeField] Body[] bodies;
     [SerializeField] bool capturePerformance;
+    [SerializeField] bool useRobotd;
+    [SerializeField] bool robotdLockstep = true;
+    [SerializeField] bool captureRobotdTrace;
+    public bool RobotdLockstep => useRobotd && robotdLockstep;
+    MicroDuckRobotd robotd;
+    public bool UsesRobotd => useRobotd;
+    public string ControllerStatus => robotd?.Policy ?? State.ToString();
+    public string RobotdRunDirectory => robotd?.RunDirectory;
+
+    public enum LocomotionState { Standing, Walking, Recovering, LimpFall, PoseRamp }
+    public LocomotionState State { get; private set; }
+    public bool IsFallSequence => useRobotd ? robotd != null && (robotd.Policy == "limp_fall" || robotd.Policy == "limp_pose") : fallRecovery.Current != MicroDuckFallRecovery.Phase.Policy;
+    public float Uprightness { get; private set; } = 1;
+    readonly MicroDuckFallRecovery fallRecovery = new();
+    readonly double[] measuredJoints = new double[14];
+    readonly double[] filteredTargets = new double[14];
+    readonly double[] baseGain = new double[14];
+    readonly double[] baseBiasPosition = new double[14];
+    bool haveFilteredTargets;
+    double appliedGainRatio = double.NaN;
+    public Vector3 FootMidpoint { get; private set; }
+    int leftFootSite = -1, rightFootSite = -1;
 
     const int JointCount = 14;
     const int ObservationCount = 61;
@@ -135,6 +158,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     {
         requestedCommand = new Vector3(forward, left, yawRate);
         commandUpdatedAt = Time.realtimeSinceStartupAsDouble;
+        robotd?.Command(forward, left, yawRate);
     }
 
     void OnEnable()
@@ -181,14 +205,17 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
                 BeginPerformanceCapture();
             if (MujocoLib.mjVERSION_HEADER != 3015000 || MujocoLib.mj_version() != 3015000)
                 throw new InvalidOperationException("MicroDuck requires the MuJoCo 3.15.0 runtime and bindings.");
-            if (standingModel == null || walkingModel == null || sceneXml == null ||
+            if ((!useRobotd && (standingModel == null || walkingModel == null)) || sceneXml == null ||
                 nativeAssets == null || bodies == null || bodies.Length == 0)
                 throw new InvalidOperationException("Locomotion requires both policies, native scene assets and body transforms.");
             ValidateAnchor();
 
-            standingWorker = CreateWorker(standingModel);
-            walkingWorker = CreateWorker(walkingModel);
-            input = new Tensor<float>(new TensorShape(1, ObservationCount));
+            if (!useRobotd)
+            {
+                standingWorker = CreateWorker(standingModel);
+                walkingWorker = walkingModel == standingModel ? standingWorker : CreateWorker(walkingModel);
+                input = new Tensor<float>(new TensorShape(1, ObservationCount));
+            }
 
             surfaces = new MicroDuckSurfaces(transform);
             var scanStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
@@ -204,7 +231,8 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             surfaces.BindNativeModel(model);
             initialized = true;
             ApplyInitialState();
-            RunPolicy(walkingWorker);
+            if (useRobotd) robotd = new MicroDuckRobotd(Path.GetFullPath(Path.Combine(Application.dataPath, "..")), RobotdSensors(), robotdLockstep, captureRobotdTrace);
+            else RunPolicy(walkingWorker);
         }
         catch
         {
@@ -231,7 +259,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         surfaces.ApplyNativePoses(data, true);
         MujocoLib.mj_forward(model, data);
         ApplyNativePoses();
-        StepPolicy();
+        if (!useRobotd) StepPolicy();
     }
 
     void ValidateAnchor()
@@ -303,6 +331,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             model->njnt != JointCount + 1)
             throw new InvalidOperationException("MicroDuck scene must have one free root, 14 joints and 14 actuators.");
 
+        leftFootSite = MujocoLib.mj_name2id(model, (int)MujocoLib.mjtObj.mjOBJ_SITE, "left_foot");
+        rightFootSite = MujocoLib.mj_name2id(model, (int)MujocoLib.mjtObj.mjOBJ_SITE, "right_foot");
+        if (leftFootSite < 0 || rightFootSite < 0)
+            throw new InvalidOperationException("Recovery requires both foot sites.");
         rootBodyId = -1;
         rootQposAddress = -1;
 
@@ -339,7 +371,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
                 Marshal.PtrToStringAnsi(MujocoLib.mj_id2name(model, ObjectActuator, actuatorId)) != JointNames[i])
                 throw new InvalidOperationException("Missing joint-transmission actuator: " + JointNames[i]);
             actuatorIds[i] = actuatorId;
+            baseGain[i] = model->actuator_gainprm[actuatorId * MujocoLib.mjNGAIN];
+            baseBiasPosition[i] = model->actuator_biasprm[actuatorId * MujocoLib.mjNBIAS + 1];
         }
+        appliedGainRatio = double.NaN;
         for (var i = 0; i < JointCount; i++)
             for (var j = i + 1; j < JointCount; j++)
                 if (actuatorIds[i] == actuatorIds[j])
@@ -367,6 +402,9 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     unsafe void InitializeNativeState()
     {
+        State = LocomotionState.Standing;
+        fallRecovery.Initialize();
+        haveFilteredTargets = false;
         command = requestedCommand = Vector3.zero;
         commandUpdatedAt = double.NegativeInfinity;
         Array.Clear(lastAction, 0, lastAction.Length);
@@ -486,6 +524,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         model = replacementModel;
         data = replacementData;
         ResolveModelElements();
+        if (robotd != null) { var output = robotd.Output; ApplyGainRatio(output.torque ? output.kp / 200.0 : 0); }
         ApplyNativePoses();
         performance?.RecordSurfaceRefresh(true, 0);
         performance?.RecordRebuildReasons(
@@ -520,6 +559,41 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             RefreshSurfaces();
             nextSurfaceRefresh = data->time + 0.25;
         }
+        if (useRobotd)
+        {
+            robotd.Check();
+            if (robotdLockstep)
+            {
+                for (int step = 0; step < roundedSteps; step++)
+                {
+                    if (substepsSincePolicy == 0)
+                    {
+                        if (!robotd.Step(RobotdSensors(), data->time)) return;
+                        var output = robotd.Output;
+                        ApplyGainRatio(output.torque ? output.kp / 200.0 : 0);
+                        for (int i = 0; i < JointCount; i++) data->ctrl[actuatorIds[i]] = output.targets[i < 9 ? i : i + 1];
+                    }
+                    MujocoLib.mj_step(model, data);
+                    substepsSincePolicy = (substepsSincePolicy + 1) % SubstepsPerPolicy;
+                }
+            }
+            else
+            {
+                var output = robotd.Output;
+                robotd.PublishSensors(RobotdSensors());
+                if (!output.released) return;
+                ApplyGainRatio(output.torque ? output.kp / 200.0 : 0);
+                for (int i = 0; i < JointCount; i++) data->ctrl[actuatorIds[i]] = output.targets[i < 9 ? i : i + 1];
+                for (int step = 0; step < roundedSteps; step++) MujocoLib.mj_step(model, data);
+                robotd.PublishSensors(RobotdSensors());
+            }
+            ApplyNativePoses();
+            State = robotd.Policy == "limp_fall" ? LocomotionState.LimpFall :
+                robotd.Policy == "limp_pose" ? LocomotionState.PoseRamp :
+                robotd.Fallen ? LocomotionState.Recovering :
+                requestedCommand.sqrMagnitude > 0.0025f ? LocomotionState.Walking : LocomotionState.Standing;
+            return;
+        }
         for (var step = 0; step < roundedSteps; step++)
         {
             if (substepsSincePolicy == SubstepsPerPolicy)
@@ -531,6 +605,36 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             substepsSincePolicy++;
         }
         ApplyNativePoses();
+    }
+
+    string RobotdSensors()
+    {
+        var positions = new double[15];
+        var velocities = new double[15];
+        var currents = new double[15];
+        for (int i = 0; i < JointCount; i++)
+        {
+            int wire = i < 9 ? i : i + 1;
+            positions[wire] = data->qpos[jointQpos[i]];
+            velocities[wire] = data->qvel[jointDof[i]];
+            // Pollen body_server's load proxy. This is not a calibrated electrical model.
+            currents[wire] = Math.Abs(data->actuator_force[actuatorIds[i]]) * 100.0;
+        }
+        var gravity = nativeGravity.normalized;
+        var projected = new double[3];
+        for (int i = 0; i < 3; i++) projected[i] =
+            data->xmat[rootBodyId * 9 + i] * gravity.x +
+            data->xmat[rootBodyId * 9 + 3 + i] * gravity.y +
+            data->xmat[rootBodyId * 9 + 6 + i] * gravity.z;
+        Uprightness = (float)-projected[2];
+        return JsonConvert.SerializeObject(new {
+            positions, velocities, currents_ma = currents, sim_time = data->time,
+            imu = new {
+                gyro = new[] { data->sensordata[gyroAddress], data->sensordata[gyroAddress+1], data->sensordata[gyroAddress+2] },
+                gravity = projected,
+                quat = new[] { data->xquat[rootBodyId*4], data->xquat[rootBodyId*4+1], data->xquat[rootBodyId*4+2], data->xquat[rootBodyId*4+3] }
+            }
+        });
     }
 
     static Worker CreateWorker(ModelAsset asset)
@@ -556,13 +660,22 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         return output;
     }
 
+    void ApplyGainRatio(double ratio)
+    {
+        if (appliedGainRatio == ratio) return;
+        for (int i = 0; i < JointCount; i++)
+        {
+            int actuator = actuatorIds[i];
+            // Dynamixel gain 50/160/200 is represented as relative stiffness in
+            // this native position-actuator model, not as a literal MuJoCo kp.
+            model->actuator_gainprm[actuator * MujocoLib.mjNGAIN] = baseGain[i] * ratio;
+            model->actuator_biasprm[actuator * MujocoLib.mjNBIAS + 1] = baseBiasPosition[i] * ratio;
+        }
+        appliedGainRatio = ratio;
+    }
+
     unsafe void StepPolicy()
     {
-        // Match robotd's command EMA at the policy's 50 Hz, not Unity's frame rate.
-        var target = Time.realtimeSinceStartupAsDouble - commandUpdatedAt <= CommandTimeout
-            ? requestedCommand
-            : Vector3.zero;
-        command += CommandSmoothing * (target - command);
         input.CompleteAllPendingOperations();
         // mjOBJ_BODY velocity is in the inertial frame, not the policy's IMU frame.
         var gyroX = (float)data->sensordata[gyroAddress];
@@ -587,18 +700,48 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         input[3] = (float)(r00 * gravityX + r10 * gravityY + r20 * gravityZ);
         input[4] = (float)(r01 * gravityX + r11 * gravityY + r21 * gravityZ);
         input[5] = (float)(r02 * gravityX + r12 * gravityY + r22 * gravityZ);
+        Uprightness = -input[5];
+        for (int i = 0; i < JointCount; i++) measuredJoints[i] = data->qpos[jointQpos[i]];
+        bool handedBack = fallRecovery.Step(input[3], input[4], input[5], gyroX, gyroY, gyroZ,
+            measuredJoints, PhysicsPeriod * SubstepsPerPolicy);
+        if (handedBack)
+        {
+            // robotd::Controller::reset starts a new actor episode. This is NOT
+            // mj_resetData: the physical robot keeps every part of its state.
+            Array.Clear(lastAction, 0, lastAction.Length);
+            haveFilteredTargets = false;
+        }
+        if (IsFallSequence)
+        {
+            command = Vector3.zero;
+            bool limp = fallRecovery.Current == MicroDuckFallRecovery.Phase.Limp;
+            State = limp ? LocomotionState.LimpFall : LocomotionState.PoseRamp;
+            ApplyGainRatio(limp ? 50.0 / 200 : 160.0 / 200);
+            for (int i = 0; i < JointCount; i++)
+                data->ctrl[actuatorIds[i]] = fallRecovery.Target(i, measuredJoints[i], DefaultPositions[i]);
+            return;
+        }
+        // The fallen verdict is telemetry, never a gate on the actor or commands.
+        var target = Time.realtimeSinceStartupAsDouble - commandUpdatedAt <= CommandTimeout
+            ? requestedCommand : Vector3.zero;
+        command += CommandSmoothing * (target - command);
         for (var i = 0; i < JointCount; i++)
         {
             input[6 + i] = (float)(data->qpos[jointQpos[i]] - DefaultPositions[i]);
             input[20 + i] = (float)data->qvel[jointDof[i]];
             input[34 + i] = lastAction[i];
         }
-        input[48] = command.x;
-        input[49] = command.y;
-        input[50] = command.z;
-        var output = RunPolicy(command.sqrMagnitude > StandingThreshold * StandingThreshold
-            ? walkingWorker
-            : standingWorker);
+        // Pollen's default is velstand in walk, no separate standing network.
+        // Equal model references denote this combined mode in the Unity prefab.
+        bool separateStanding = standingModel != walkingModel;
+        bool standing = separateStanding && command.sqrMagnitude <= StandingThreshold * StandingThreshold;
+        State = fallRecovery.Fallen ? LocomotionState.Recovering :
+            command.sqrMagnitude > StandingThreshold * StandingThreshold ? LocomotionState.Walking : LocomotionState.Standing;
+        input[48] = standing ? 0 : command.x;
+        input[49] = standing ? 0 : command.y;
+        input[50] = standing ? 0 : command.z;
+        ApplyGainRatio(standing ? 0.8 : 1.0);
+        var output = RunPolicy(standing ? standingWorker : walkingWorker);
         var actions = output.AsReadOnlyNativeArray();
         for (var i = 0; i < JointCount; i++)
             if (float.IsNaN(actions[i]) || float.IsInfinity(actions[i]))
@@ -606,14 +749,24 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         for (var i = 0; i < JointCount; i++)
         {
             lastAction[i] = actions[i];
-            data->ctrl[actuatorIds[i]] = DefaultPositions[i] + actions[i];
+            double targetPosition = DefaultPositions[i] + (standing ? 1.0 : 0.9) * actions[i];
+            double alpha = i >= 5 && i < 9 ? 0.5 : 0.7;
+            if (haveFilteredTargets) targetPosition = alpha * targetPosition + (1 - alpha) * filteredTargets[i];
+            filteredTargets[i] = targetPosition;
+            data->ctrl[actuatorIds[i]] = targetPosition;
         }
+        haveFilteredTargets = true;
     }
 
     unsafe void ApplyNativePoses()
     {
         var anchorMatrix = transform.localToWorldMatrix;
         var anchorRotation = transform.rotation;
+        var foot = new Vector3(
+            (float)-(data->site_xpos[leftFootSite * 3 + 1] + data->site_xpos[rightFootSite * 3 + 1]) * 0.5f,
+            (float)(data->site_xpos[leftFootSite * 3 + 2] + data->site_xpos[rightFootSite * 3 + 2]) * 0.5f,
+            (float)(data->site_xpos[leftFootSite * 3] + data->site_xpos[rightFootSite * 3]) * 0.5f);
+        FootMidpoint = anchorMatrix.MultiplyPoint3x4(foot);
         for (var i = 0; i < bodies.Length; i++)
         {
             var bodyId = bodyIds[i];
@@ -634,12 +787,13 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     public void ReleaseSimulation()
     {
+        robotd?.Dispose();
+        robotd = null;
         initialized = false;
         previousFrameTimestamp = 0;
+        if (!ReferenceEquals(walkingWorker, standingWorker)) walkingWorker?.Dispose();
         standingWorker?.Dispose();
-        standingWorker = null;
-        walkingWorker?.Dispose();
-        walkingWorker = null;
+        standingWorker = walkingWorker = null;
         input?.Dispose();
         input = null;
         surfaces?.Dispose();
@@ -655,6 +809,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             MujocoLib.mj_deleteModel(model);
             model = null;
         }
+        leftFootSite = rightFootSite = -1;
         rootBodyId = -1;
         rootQposAddress = -1;
         gyroAddress = -1;
