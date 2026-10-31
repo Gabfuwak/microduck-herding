@@ -17,6 +17,32 @@ stick horizontal turns (+/-1 rad/s), all relative to the duck. Release to stand.
 Both controllers must be tracked; centre the sticks after spawning, reconnecting,
 or returning from focus/pause before driving. Hands-only tracking leaves it standing.
 
+Hand UI lives in Assets/UI/MicroDuck and is included in MainScene:
+- MicroDuckHandMenu.prefab shares tracked anchors between two stock XRI HandMenu
+  followers. Settings appears when the left palm faces the viewer; the microphone
+  appears when the back of the hand faces the viewer.
+- MicroDuckMicrophone.prefab is a circular, hand-locked mute toggle.
+  MicroDuckMicrophoneView swaps its normal/crossed-out icon and tint.
+- MicroDuckMainMenu.prefab is the viewer-facing Settings panel beside the palm.
+  It uses a standard Reset Button and Left/Right ToggleGroup; MicroDuckSwitchView
+  updates the Planes toggle's track colour and thumb position.
+Both canvases use TrackedDeviceGraphicRaycaster with the existing XR input rig.
+Placement, size, follow behaviour and hit-area padding are configured in the
+prefabs. Both view scripts update on value changes and reveal, not every frame.
+
+Controls change UI state only: no robot reset, environment changes, actual hand
+switching, microphone capture, speech recognition or panel expansion is connected.
+The mic starts visually unmuted. Toggle values survive hiding/revealing the menu
+instance but are not saved between app runs.
+
+User-run headset check:
+- Turn the left hand to reveal each UI; check readability, clearance and hiding.
+- Try right-index pokes and ray/pinch clicks (or controller UI trigger), including
+  the Planes label. Verify visual feedback without changing the robot or room.
+- Hide/reveal after changing toggles; confirm selections remain and UI clicks do
+  not trigger world placement behind the panel.
+Do not launch Unity builds or automated tests on the user's behalf.
+
 Share source through Git: Assets, Packages, ProjectSettings, Tools and the source
 submodule reference. Keep .meta files with their assets. Put player builds under
 Builds/; Library, Temp, Logs, UserSettings and Python caches are local/generated.

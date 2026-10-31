@@ -1,0 +1,511 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3783850569842813879
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8173285732955794158}
+  - component: {fileID: 6573178886223509981}
+  m_Layer: 0
+  m_Name: Right Hand Tracked Anchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8173285732955794158
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3783850569842813879}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7849841798332370682}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6573178886223509981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3783850569842813879}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2fadf230d1919748a9aa21d40f74619, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.XR.TrackedPoseDriver
+  m_TrackingType: 0
+  m_UpdateType: 0
+  m_IgnoreTrackingState: 0
+  m_PositionInput:
+    m_UseReference: 1
+    m_Action:
+      m_Name: 
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 55c0d49b-076f-4230-9f9d-0fe45fa0efdb
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+      m_Priority: 0
+    m_Reference: {fileID: -3326005586356538449, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  m_RotationInput:
+    m_UseReference: 1
+    m_Action:
+      m_Name: 
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: c1b9114a-0125-46d5-b747-30c2f39a6e29
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+      m_Priority: 0
+    m_Reference: {fileID: 5101698808175986029, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  m_TrackingStateInput:
+    m_UseReference: 1
+    m_Action:
+      m_Name: 
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 848a76c0-e379-408c-8f83-57299ec05b1f
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+      m_Priority: 0
+    m_Reference: {fileID: -1277054153949319361, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  m_PositionAction:
+    m_Name: 
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 2150c220-4896-4d7d-b782-a6ebfd341009
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings: []
+    m_Flags: 0
+    m_Priority: 0
+  m_RotationAction:
+    m_Name: 
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 2bbc99d2-3301-4548-a063-e351d4b26f1d
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings: []
+    m_Flags: 0
+    m_Priority: 0
+--- !u!1 &3962634450294172082
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4831328401290674718}
+  - component: {fileID: 2796659781831727571}
+  m_Layer: 0
+  m_Name: Left Hand Tracked Anchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4831328401290674718
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3962634450294172082}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7849841798332370682}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2796659781831727571
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3962634450294172082}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2fadf230d1919748a9aa21d40f74619, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.XR.TrackedPoseDriver
+  m_TrackingType: 0
+  m_UpdateType: 0
+  m_IgnoreTrackingState: 0
+  m_PositionInput:
+    m_UseReference: 1
+    m_Action:
+      m_Name: 
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 4525a601-ac08-40b6-b0ff-2b8986dd0320
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+      m_Priority: 0
+    m_Reference: {fileID: -2024308242397127297, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  m_RotationInput:
+    m_UseReference: 1
+    m_Action:
+      m_Name: 
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: 130d1ca7-04bb-429f-8a54-db97a877893b
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+      m_Priority: 0
+    m_Reference: {fileID: 8248158260566104461, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  m_TrackingStateInput:
+    m_UseReference: 1
+    m_Action:
+      m_Name: 
+      m_Type: 0
+      m_ExpectedControlType: 
+      m_Id: d5d754a3-c54f-4c42-b284-1c9583c45e4f
+      m_Processors: 
+      m_Interactions: 
+      m_SingletonActionBindings: []
+      m_Flags: 0
+      m_Priority: 0
+    m_Reference: {fileID: 684395432459739428, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  m_PositionAction:
+    m_Name: 
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: dc28ec47-fa30-4121-99de-e094698e27a6
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings: []
+    m_Flags: 0
+    m_Priority: 0
+  m_RotationAction:
+    m_Name: 
+    m_Type: 0
+    m_ExpectedControlType: 
+    m_Id: 8232fb9d-5911-444f-ae88-6e0cd2dde802
+    m_Processors: 
+    m_Interactions: 
+    m_SingletonActionBindings: []
+    m_Flags: 0
+    m_Priority: 0
+--- !u!1 &5037594338062967475
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7849841798332370682}
+  - component: {fileID: 8138677379910275555}
+  m_Layer: 0
+  m_Name: MicroDuckHandMenu
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7849841798332370682
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5037594338062967475}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4831328401290674718}
+  - {fileID: 8173285732955794158}
+  - {fileID: 6114908993481626899}
+  - {fileID: 9000000011}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8138677379910275555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5037594338062967475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aceb12f22b4c45e59443ac967a8ece7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.UI.BodyUI.HandMenu
+  m_HandMenuUIGameObject: {fileID: 9173893096150017256}
+  m_MenuHandedness: 1
+  m_HandMenuUpDirection: 1
+  m_LeftPalmAnchor: {fileID: 4831328401290674718}
+  m_RightPalmAnchor: {fileID: 8173285732955794158}
+  m_MinFollowDistance: 0.005
+  m_MaxFollowDistance: 0.03
+  m_MinToMaxDelaySeconds: 1
+  m_HideMenuWhenGazeDiverges: 1
+  m_MenuVisibleGazeAngleDivergenceThreshold: 35
+  m_MenuHideGazeAngleDivergenceThresholdBuffer: 20
+  m_AnimateMenuHideAndReveal: 1
+  m_RevealHideAnimationDuration: 0.1
+  m_HideMenuOnSelect: 0
+  m_InteractionManager: {fileID: 0}
+  m_HandTrackingFollowPreset:
+    m_UseConstant: 1
+    m_ConstantValue:
+      rightHandLocalPosition: {x: 0, y: 0.022, z: 0.035}
+      leftHandLocalPosition: {x: 0, y: 0.022, z: 0.035}
+      rightHandLocalRotation: {x: 90, y: 0, z: 0}
+      leftHandLocalRotation: {x: 90, y: 0, z: 0}
+      palmReferenceAxis: 1
+      invertAxisForRightHand: 0
+      requirePalmFacingUser: 1
+      palmFacingUserDegreeAngleThreshold: 75
+      requirePalmFacingUp: 0
+      palmFacingUpDegreeAngleThreshold: 95.74
+      hideDelaySeconds: 0.05
+      PalmFacingUserHideMenuAngleThresholdDelta: 15
+      PalmFacingUpHideMenuAngleThresholdDelta: 15
+      snapToGaze: 0
+      snapToGazeAngleThreshold: 180
+      allowSmoothing: 0
+      followLowerSmoothingValue: 12
+      followUpperSmoothingValue: 16
+    m_Variable: {fileID: 0}
+  m_ControllerFollowPreset:
+    m_UseConstant: 1
+    m_ConstantValue:
+      rightHandLocalPosition: {x: 0.022, y: 0, z: 0.035}
+      leftHandLocalPosition: {x: -0.022, y: 0, z: 0.035}
+      rightHandLocalRotation: {x: 0, y: -90, z: 0}
+      leftHandLocalRotation: {x: 0, y: 90, z: 0}
+      palmReferenceAxis: 3
+      invertAxisForRightHand: 1
+      requirePalmFacingUser: 1
+      palmFacingUserDegreeAngleThreshold: 75
+      requirePalmFacingUp: 0
+      palmFacingUpDegreeAngleThreshold: 72
+      hideDelaySeconds: 0.15
+      PalmFacingUserHideMenuAngleThresholdDelta: 15
+      PalmFacingUpHideMenuAngleThresholdDelta: 15
+      snapToGaze: 0
+      snapToGazeAngleThreshold: 180
+      allowSmoothing: 0
+      followLowerSmoothingValue: 12
+      followUpperSmoothingValue: 16
+    m_Variable: {fileID: 0}
+--- !u!1001 &2917229695519246020
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 7849841798332370682}
+    m_Modifications:
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+--- !u!4 &6114908993481626899 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 8980337805166449623, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+  m_PrefabInstance: {fileID: 2917229695519246020}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &9173893096150017256 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6281434998726418988, guid: e49eb98c8bc723ccc918e0414d2259a7, type: 3}
+  m_PrefabInstance: {fileID: 2917229695519246020}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &9000000010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9000000011}
+  - component: {fileID: 9000000012}
+  m_Layer: 0
+  m_Name: PalmMenuFollower
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9000000011
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9000000010}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 9000000021}
+  m_Father: {fileID: 7849841798332370682}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9000000012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9000000010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aceb12f22b4c45e59443ac967a8ece7d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.UI.BodyUI.HandMenu
+  m_HandMenuUIGameObject: {fileID: 9000000022}
+  m_MenuHandedness: 1
+  m_HandMenuUpDirection: 1
+  m_LeftPalmAnchor: {fileID: 4831328401290674718}
+  m_RightPalmAnchor: {fileID: 8173285732955794158}
+  m_MinFollowDistance: 0.005
+  m_MaxFollowDistance: 0.03
+  m_MinToMaxDelaySeconds: 1
+  m_HideMenuWhenGazeDiverges: 0
+  m_MenuVisibleGazeAngleDivergenceThreshold: 35
+  m_MenuHideGazeAngleDivergenceThresholdBuffer: 20
+  m_AnimateMenuHideAndReveal: 0
+  m_RevealHideAnimationDuration: 0.1
+  m_HideMenuOnSelect: 0
+  m_InteractionManager: {fileID: 0}
+  m_HandTrackingFollowPreset:
+    m_UseConstant: 1
+    m_ConstantValue:
+      rightHandLocalPosition: {x: 0.16, y: -0.05, z: 0.10}
+      leftHandLocalPosition: {x: -0.16, y: -0.05, z: 0.10}
+      rightHandLocalRotation: {x: -90, y: 0, z: 0}
+      leftHandLocalRotation: {x: -90, y: 0, z: 0}
+      palmReferenceAxis: 4
+      invertAxisForRightHand: 0
+      requirePalmFacingUser: 1
+      palmFacingUserDegreeAngleThreshold: 65
+      requirePalmFacingUp: 0
+      palmFacingUpDegreeAngleThreshold: 90
+      hideDelaySeconds: 0.25
+      PalmFacingUserHideMenuAngleThresholdDelta: 10
+      PalmFacingUpHideMenuAngleThresholdDelta: 10
+      snapToGaze: 1
+      snapToGazeAngleThreshold: 180
+      allowSmoothing: 1
+      followLowerSmoothingValue: 12
+      followUpperSmoothingValue: 16
+    m_Variable: {fileID: 0}
+  m_ControllerFollowPreset:
+    m_UseConstant: 1
+    m_ConstantValue:
+      rightHandLocalPosition: {x: -0.05, y: -0.16, z: 0.10}
+      leftHandLocalPosition: {x: 0.05, y: -0.16, z: 0.10}
+      rightHandLocalRotation: {x: 0, y: 90, z: 0}
+      leftHandLocalRotation: {x: 0, y: -90, z: 0}
+      palmReferenceAxis: 0
+      invertAxisForRightHand: 1
+      requirePalmFacingUser: 1
+      palmFacingUserDegreeAngleThreshold: 65
+      requirePalmFacingUp: 0
+      palmFacingUpDegreeAngleThreshold: 90
+      hideDelaySeconds: 0.25
+      PalmFacingUserHideMenuAngleThresholdDelta: 10
+      PalmFacingUpHideMenuAngleThresholdDelta: 10
+      snapToGaze: 1
+      snapToGazeAngleThreshold: 180
+      allowSmoothing: 1
+      followLowerSmoothingValue: 12
+      followUpperSmoothingValue: 16
+    m_Variable: {fileID: 0}
+--- !u!1001 &9000000020
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 9000000011}
+    m_Modifications: []
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+--- !u!4 &9000000021 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 100001, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+  m_PrefabInstance: {fileID: 9000000020}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &9000000022 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 100000, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+  m_PrefabInstance: {fileID: 9000000020}
+  m_PrefabAsset: {fileID: 0}
