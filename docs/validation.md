@@ -13,8 +13,9 @@ daemon-based feature branch.
 | Real Unity/MuJoCo startup, walking and forced supine recovery | Passed; 0.32 m forward over 4 simulation seconds at a 0.3 m/s request; upright afterward |
 | Simulation time through that recovery | Every physics interval retained; no clock restart |
 | Generated table-to-floor route | Complete; reverse climb blocked |
-| Behind-target command bounds | Yaw ≤0.55 rad/s, slew ≤0.016 per 20 ms; stable direction around 180° |
-| Full physical behind-target trial at 4× | Arrived upright after 8.84 simulation seconds, approximately 165° measured turn, then reached a second goal |
+| Behind-target command bounds | Yaw ≤0.55 rad/s, slew ≤0.016 per 20 ms; stable direction around 180°; nonzero turn at zero requested walking speed |
+| Full physical behind-target trial at 4× | After separating route heading from walking speed: arrived upright after 8.47 simulation seconds, approximately 161° measured turn, then reached a second goal |
+| Actual “Goal behind duck” button, 0.65 m target | Reached the accepted target upright in the editor trial |
 | Physical 0.45 m table drop at 4× | Fell, retained goal, landed, resumed, arrived upright; placement anchor unchanged |
 | Invalid target while navigating | Previous goal retained |
 | Linux standalone with fresh XDG policy cache | Built and ran; policies staged from packaged assets, no native/XR startup errors |
@@ -28,7 +29,10 @@ Machine-generated details are under ignored `Builds/Validation`,
 in the two native tooling READMEs. `MicroDuckControlChecks` uses a deliberately
 forced supine pose as a test input; production resets occur only on explicit
 placement. `MicroDuckNavigationChecks.RunFlat()` performs the full behind-target
-trial; its menu check performs the table/drop trial.
+trial; its menu check performs the table/drop trial. Steering heading comes
+from `NavMeshAgent.steeringTarget` relative to measured feet, independently of
+`desiredVelocity`, so a zero requested walking speed does not suppress turning.
+Translation, turn limits and acceleration limits are unchanged.
 
 ## Practical limits
 

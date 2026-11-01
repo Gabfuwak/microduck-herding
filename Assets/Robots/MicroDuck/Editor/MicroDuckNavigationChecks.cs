@@ -25,6 +25,7 @@ public static class MicroDuckNavigationChecks
         public bool reverseDropBlocked;
         public bool behindTurnBounded;
         public bool behindTurnDirectionStable;
+        public bool turnsAtZeroSpeed;
         public float maximumYaw;
         public float maximumYawStep;
         public string runtime = "not run: enter the desktop trial Play mode, then run again";
@@ -144,7 +145,7 @@ public static class MicroDuckNavigationChecks
             for (var sample = 0; sample < 100; ++sample)
             {
                 root.transform.rotation = Quaternion.Euler(0f, sample % 2 == 0 ? 0.01f : -0.01f, 0f);
-                var command = (Vector3)convert.Invoke(nav, new object[] { Vector3.back * 0.3f, 0.02f });
+                var command = (Vector3)convert.Invoke(nav, new object[] { Vector3.back * 0.3f, Vector3.back, 0.02f });
                 result.maximumYaw = Mathf.Max(result.maximumYaw, Mathf.Abs(command.z));
                 result.maximumYawStep = Mathf.Max(result.maximumYawStep, Mathf.Abs(command.z - previousYaw));
                 if (firstSign == 0f && Mathf.Abs(command.z) > 0.001f) firstSign = Mathf.Sign(command.z);
@@ -154,6 +155,11 @@ public static class MicroDuckNavigationChecks
                 previousYaw = command.z;
             }
             result.behindTurnBounded &= result.maximumYaw > 0.1f;
+            root.transform.rotation = Quaternion.identity;
+            typeof(MicroDuckNavigator).GetField("previousCommand", PrivateInstance).SetValue(nav, Vector3.zero);
+            var stationary = (Vector3)convert.Invoke(nav, new object[] { Vector3.zero, Vector3.back, 0.02f });
+            result.turnsAtZeroSpeed = stationary.x == 0f && stationary.y == 0f &&
+                Mathf.Abs(stationary.z) > 0.001f && Mathf.Abs(stationary.z) <= 0.0161f;
         }
         finally { Object.DestroyImmediate(root); }
     }

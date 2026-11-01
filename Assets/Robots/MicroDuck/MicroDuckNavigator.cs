@@ -354,7 +354,7 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         }
         Status = "Walking to target";
         SetVisualColor(RouteColor);
-        LastCommand = VelocityCommand(agent.desiredVelocity, dt);
+        LastCommand = VelocityCommand(agent.desiredVelocity, agent.steeringTarget - feet, dt);
         DrawRoute(feet);
         return LastCommand;
     }
@@ -415,18 +415,21 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         }
         Status = "Walking down link — goal kept";
         var direction = Flat(dropEnd - dropStart).normalized;
-        LastCommand = VelocityCommand(direction * Mathf.Min(speed, 0.30f), dt);
+        LastCommand = VelocityCommand(direction * Mathf.Min(speed, 0.30f), direction, dt);
         return LastCommand;
     }
 
-    Vector3 VelocityCommand(Vector3 worldVelocity, float dt)
+    Vector3 VelocityCommand(Vector3 worldVelocity, Vector3 worldHeading, float dt)
     {
         worldVelocity = Flat(worldVelocity);
+        var heading = Flat(worldHeading);
         var forward = Flat(trunk.forward).normalized;
         if (forward.sqrMagnitude < 0.001f) return Vector3.zero;
         var right = Vector3.Cross(Vector3.up, forward);
-        var angle = worldVelocity.sqrMagnitude > 0.00001f
-            ? Vector3.SignedAngle(forward, worldVelocity, Vector3.up) : 0f;
+        // The next route point still gives a heading when the agent requests
+        // no translation. Zero walking speed must not suppress turning.
+        var angle = heading.sqrMagnitude > 0.00001f
+            ? Vector3.SignedAngle(forward, heading, Vector3.up) : 0f;
         // At the exactly-behind ambiguity keep the chosen turn direction until
         // a meaningful heading change, rather than alternating left and right.
         if (Mathf.Abs(angle) > 155f) angle = Mathf.Abs(angle) * turnSign;
