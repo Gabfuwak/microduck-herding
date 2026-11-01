@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "artifacts": [
+    {
+      "destination": "Assets/Plugins/Linux/x86_64/libmicroduck_control.so",
+      "platform": "linux-x86_64",
+      "sha256": "fcb079d785cf6c84214f8634cb08e982ebf215154a86b00f932299514c29faa3",
+      "elf": {
+        "machine": "Advanced Micro Devices X86-64",
+        "soname": null,
+        "needed": [
+          "libgcc_s.so.1",
+          "libm.so.6",
+          "libc.so.6",
+          "ld-linux-x86-64.so.2"
+        ],
+        "load_alignments": [
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "required_exports": [
+          "md_create",
+          "md_destroy",
+          "md_step",
+          "md_reset",
+          "md_last_error",
+          "md_abi_version"
+        ]
+      }
+    },
+    {
+      "destination": "Assets/Plugins/Android/arm64-v8a/libmicroduck_control.so",
+      "platform": "android-arm64",
+      "sha256": "176da118a420010101bb080b6fa58ad2c392db6ee6b53192fba548fe9d7d550c",
+      "elf": {
+        "machine": "AArch64",
+        "soname": null,
+        "needed": [
+          "libdl.so",
+          "libm.so",
+          "libc.so"
+        ],
+        "load_alignments": [
+          16384,
+          16384,
+          16384,
+          16384
+        ],
+        "required_exports": [
+          "md_create",
+          "md_destroy",
+          "md_step",
+          "md_reset",
+          "md_last_error",
+          "md_abi_version"
+        ]
+      }
+    }
+  ]
+}

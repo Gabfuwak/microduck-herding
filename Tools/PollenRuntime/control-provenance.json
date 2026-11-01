@@ -1,0 +1,141 @@
+{
+  "upstream": "https://github.com/pollen-robotics/microduck.git",
+  "commit": "b2b0d213a402caeac492dd662ea891faa17f67c0",
+  "archive_sha256": "c87ac41f6b4df7d77d71728ef319bb8475fa33758fe3f1ed9d815959f76b2765",
+  "archive_paths": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "LICENSE",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "duck-control",
+    "duck-ipc-proto",
+    "kinematics",
+    "robotd-params",
+    "robotd/src/main.rs",
+    "robotd/src/control.rs",
+    "robotd/src/posture.rs",
+    "deploy/robotd.toml"
+  ],
+  "abi": 1,
+  "verbatim_modules": {
+    "robotd/src/control.rs": "24b7b51dc68e433ba00a12f7454161febc4fa67af971d717a2522f29e84e0488",
+    "robotd/src/posture.rs": "f41eb3b63353f142a2c52001a3d2cd68b19450466f9abd480455d17771d734e2",
+    "duck-control/src/obs.rs": "89c139b747c932eb48fb4f2916e5d245a23f60367b33f55746fc4fb0320e8b6d",
+    "duck-control/src/fall.rs": "86769447a090768baffda0487e01d4f83fe3bd55fbd9dc354f902be0d50e3494",
+    "duck-control/src/safety.rs": "9f00233825613e16351383c8c36f409fd060485bbe280c08694c67a453e5d198",
+    "duck-control/src/model.rs": "0d6f1c81ae18d928b309db5150e5a89ecf5c633c45eb593d0f87282355cab804"
+  },
+  "extracted_fragments": {
+    "fall_helpers": {
+      "file": "robotd/src/main.rs",
+      "start_line": 166,
+      "end_line": 232,
+      "sha256": "ecbf754e2b392bb80fb6329e3e7a199ff3ba6c31a64c7f5f095681ed45f7d6ce"
+    },
+    "bringup_helpers": {
+      "file": "robotd/src/main.rs",
+      "start_line": 1740,
+      "end_line": 1783,
+      "sha256": "5bcc6a217187116ca4e2911dec609e7603aaf345f451cd79d8c22cbae6883d3b"
+    },
+    "slew": {
+      "file": "robotd/src/main.rs",
+      "start_line": 1817,
+      "end_line": 1823,
+      "sha256": "44e9cee83b7818bababeb7628c67d387741f69197e953289ff6aa1ba6723c63d"
+    },
+    "controller_constructor": {
+      "file": "robotd/src/main.rs",
+      "start_line": 2032,
+      "end_line": 2097,
+      "sha256": "22665e546b6fdd2d736f9005fea005123144955612e46d489004bfcffaece3bb"
+    },
+    "coast_and_resume": {
+      "file": "robotd/src/main.rs",
+      "start_line": 4099,
+      "end_line": 4144,
+      "sha256": "c8ff2fd0bd0bf2b5510dc841ed0a6eb2772e4d311e7e0c984c5fd3b077e593d3"
+    },
+    "seat_and_ramp": {
+      "file": "robotd/src/main.rs",
+      "start_line": 4899,
+      "end_line": 4947,
+      "sha256": "bcfcd061d159e672e28e282c4935919d5b90e612baa54b17205bbd51278566d5"
+    },
+    "fall_transitions": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3072,
+      "end_line": 3180,
+      "sha256": "051591a8dc60e0fbce9ee7befb1ce807dca798962e328d081388245a99cae6ec"
+    },
+    "command_smoothing": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3228,
+      "end_line": 3245,
+      "sha256": "9eac4f73403ceaba07ebc1d247ce12135f45d07780d3626fc71b76de460e0641"
+    },
+    "bringup_start": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3302,
+      "end_line": 3335,
+      "sha256": "642f4a79c0c360e91743aa28d6d504fabc59d8ff164ae4bae3150c6bc74892eb"
+    },
+    "bringup_finish": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3368,
+      "end_line": 3378,
+      "sha256": "1cdc41f6933e107b6ffbe0f78b9154d6fae1e1110804a2d9e134d2219744733e"
+    },
+    "posture_and_driving": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3510,
+      "end_line": 3629,
+      "sha256": "e1455a3485fd6c320aa0c5e399afac67b208206fb71e692a0a6246d1dfe3ce35"
+    },
+    "voltage_and_fall_targets": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3633,
+      "end_line": 3672,
+      "sha256": "f4cdd508bf068dc4c64363597516e5476b35e9c17b2a49ac6ac30a18dd099e7a"
+    },
+    "policy_and_homing_targets": {
+      "file": "robotd/src/main.rs",
+      "start_line": 3693,
+      "end_line": 3721,
+      "sha256": "4ba358b51299d86b5088da4ed836d020e693a48d1c6d967d33a3a9a16a399336"
+    }
+  },
+  "adaptations": [
+    "Feature-gate serial hardware and TCP backend; build only control dependency crates.",
+    "Supply simulation clock and memory RobotIo; fixed enabled navigation configuration, fresh sensors/commands at 50Hz.",
+    "Explicit ORT path initialization; no environment mutation.",
+    "Exclude disabled audio, pickup, idle, instruments, shutdown, IPC and model hot-swap paths.",
+    "Report inference errors across ABI while retaining original hold behavior."
+  ],
+  "host_sources": {
+    "lib.rs": "d656498580c87d2dcf018c9f35016d4bbfe6b69ffcb9cdf6365485193dc23885",
+    "prepare.py": "e5d0db98a0da976379f6506023846578a5b27ac765dc50a752cd9545a854625d",
+    "Cargo.toml": "8b8d710538a18b5d201127021d392fee318485c09989f8f863cec0c1fde70f07",
+    "microduck_control.h": "3b05b4e06ff3baaee1a34376b9f45a35a17a6e3a561df8ca81ef7be2606332a1"
+  },
+  "artifacts": {
+    "linux-x86_64": {
+      "path": "artifacts/linux-x86_64/libmicroduck_control.so",
+      "sha256": "fcb079d785cf6c84214f8634cb08e982ebf215154a86b00f932299514c29faa3",
+      "bytes": 1350432,
+      "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+      "cargo_lock_sha256": "d54796cdb1592ba55b544f8bba509e2de360adfe7eed7dce12bcc713c8ab0de0"
+    },
+    "android-arm64": {
+      "path": "artifacts/android-arm64/libmicroduck_control.so",
+      "sha256": "176da118a420010101bb080b6fa58ad2c392db6ee6b53192fba548fe9d7d550c",
+      "bytes": 1483336,
+      "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)",
+      "cargo_lock_sha256": "d54796cdb1592ba55b544f8bba509e2de360adfe7eed7dce12bcc713c8ab0de0",
+      "ndk": "Pkg.Desc = Android NDK\nPkg.Revision = 27.2.12479018\nPkg.BaseRevision = 27.2.12479018\nPkg.ReleaseName = r27c\n",
+      "android_api": 29,
+      "max_page_size": 16384
+    }
+  }
+}

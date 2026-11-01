@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using UnityEditor;
-using Unity.InferenceEngine;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -19,8 +18,7 @@ public static class MicroDuckImporter
     const string NativeAssetPath = "Assets/Robots/MicroDuck/MuJoCo";
     const string MeshAssetPath = "Assets/Robots/MicroDuck/Meshes";
     const string MaterialAssetPath = "Assets/Robots/MicroDuck/Materials";
-    const string StandingPolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_stand.onnx";
-    const string WalkingPolicyPath = "Assets/Robots/MicroDuck/Policies/alpha_walking.onnx";
+    const string PollenPolicyPath = "Assets/Robots/MicroDuck/Policies/Pollen";
 
     [MenuItem("Tools/MicroDuck/Rebuild MuJoCo Prefab")]
     public static void RebuildMuJoCoPrefab()
@@ -339,19 +337,23 @@ public static class MicroDuckImporter
 
     static void ConfigurePolicies(GameObject root)
     {
-        var standing = AssetDatabase.LoadAssetAtPath<ModelAsset>(StandingPolicyPath);
-        var walking = AssetDatabase.LoadAssetAtPath<ModelAsset>(WalkingPolicyPath);
+        var policies = Directory.GetFiles(PollenPolicyPath, "*.bytes").OrderBy(path => path, StringComparer.Ordinal)
+            .Select(AssetDatabase.LoadAssetAtPath<TextAsset>).ToArray();
         var scene = AssetDatabase.LoadAssetAtPath<TextAsset>(NativeAssetPath + "/scene.xml");
-        if (standing == null || walking == null || scene == null)
-            throw new InvalidOperationException("Import the policies and run python3 Tools/setup_mujoco_unity.py first.");
+        if (policies.Length == 0 || policies.Any(policy => policy == null) || scene == null)
+            throw new InvalidOperationException("The packaged Pollen policies and MuJoCo scene assets must be present.");
         var controller = root.GetComponent<MicroDuckPolicyController>();
         if (controller == null)
             controller = root.AddComponent<MicroDuckPolicyController>();
         if (root.GetComponent<MicroDuckJoystick>() == null)
             root.AddComponent<MicroDuckJoystick>();
+        if (root.GetComponent<MicroDuckNavigator>() == null)
+            root.AddComponent<MicroDuckNavigator>();
         using var serialized = new SerializedObject(controller);
-        serialized.FindProperty("standingModel").objectReferenceValue = standing;
-        serialized.FindProperty("walkingModel").objectReferenceValue = walking;
+        var policyArray = serialized.FindProperty("controlPolicies");
+        policyArray.arraySize = policies.Length;
+        for (var i = 0; i < policies.Length; i++)
+            policyArray.GetArrayElementAtIndex(i).objectReferenceValue = policies[i];
         serialized.FindProperty("sceneXml").objectReferenceValue = scene;
         var assets = serialized.FindProperty("nativeAssets");
         var files = Directory.GetFiles(NativeAssetPath + "/assets", "*.bytes").OrderBy(path => path, StringComparer.Ordinal).ToArray();

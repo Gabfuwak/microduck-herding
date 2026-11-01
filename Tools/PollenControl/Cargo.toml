@@ -1,0 +1,15 @@
+[package]
+name = "microduck-control"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+[lib]
+name = "microduck_control"
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+duck-control = { path = "../duck-control", default-features = false }
+duck-ipc-proto = { path = "../duck-ipc-proto" }
+robotd-params = { path = "../robotd-params" }
+kinematics = { path = "../kinematics" }
+tracing.workspace = true
+serde_json.workspace = true

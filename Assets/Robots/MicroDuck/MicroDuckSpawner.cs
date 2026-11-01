@@ -117,7 +117,8 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         {
             duck.transform.SetPositionAndRotation(spawnPoint, rotation);
             m_PreparedController.PlacePreparedSimulation();
-            duck.AddComponent<MicroDuckNavigator>().Initialize(m_PreparedController);
+            var navigator = duck.GetComponent<MicroDuckNavigator>() ?? duck.AddComponent<MicroDuckNavigator>();
+            navigator.Initialize(m_PreparedController);
 
             Transform root = m_PreparedRoot.transform;
             duck.transform.SetParent(null, true);

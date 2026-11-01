@@ -7,7 +7,6 @@ using System.IO;
 using Unity.Profiling;
 using Stopwatch = System.Diagnostics.Stopwatch;
 using Mujoco;
-using Unity.InferenceEngine;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -28,15 +27,13 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         public Transform transform;
     }
 
-    [SerializeField] ModelAsset standingModel;
-    [SerializeField] ModelAsset walkingModel;
+    [SerializeField] TextAsset[] controlPolicies;
     [SerializeField] TextAsset sceneXml;
     [SerializeField] NativeAsset[] nativeAssets;
     [SerializeField] Body[] bodies;
     [SerializeField] bool capturePerformance;
 
     const int JointCount = 14;
-    const int ObservationCount = 61;
     const int ObjectBody = (int)MujocoLib.mjtObj.mjOBJ_BODY;
     const int ObjectJoint = (int)MujocoLib.mjtObj.mjOBJ_JOINT;
     const int ObjectActuator = (int)MujocoLib.mjtObj.mjOBJ_ACTUATOR;
@@ -44,8 +41,6 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     const int FreeJoint = (int)MujocoLib.mjtJoint.mjJNT_FREE;
     const double PhysicsPeriod = 0.005;
     const int SubstepsPerPolicy = 4;
-    const float CommandSmoothing = 0.2f;
-    const float StandingThreshold = 0.05f;
     const double CommandTimeout = 0.5;
 
     static readonly ProfilerMarker SurfaceScanMarker = new("MicroDuck.SurfaceScan");
@@ -73,10 +68,21 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     readonly int[] actuatorIds = new int[JointCount];
     int[] bodyIds;
     Vector3 nativeGravity;
-    readonly float[] lastAction = new float[JointCount];
-    Worker standingWorker;
-    Worker walkingWorker;
-    Tensor<float> input;
+    readonly double[] baseGain = new double[JointCount];
+    readonly double[] baseBiasPosition = new double[JointCount];
+    MicroDuckPollenControl pollen;
+    MicroDuckPollenControl.MotorOutput motorOutput;
+    double appliedGainRatio = double.NaN;
+
+    internal bool SimulationReady => initialized && data != null && pollen != null;
+    public bool ControlReady => pollen != null && motorOutput.state == 2;
+    public bool RecoveryActive => pollen != null && (motorOutput.state == 3 || motorOutput.state == 4);
+    public bool IsFallen => pollen != null && motorOutput.fallen != 0;
+    public float Uprightness { get; private set; } = 1f;
+    public string BehaviorState => pollen == null ? "not initialized" :
+        motorOutput.state == 0 ? "initializing" : motorOutput.state == 1 ? "homing" :
+        motorOutput.state == 3 ? "limp_fall" : motorOutput.state == 4 ? "limp_pose" :
+        motorOutput.fallen != 0 ? "recovering" : "policy";
     MujocoLib.mjModel_* model;
     MujocoLib.mjData_* data;
     int rootBodyId = -1;
@@ -86,7 +92,6 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     int gyroAddress = -1;
     int substepsSincePolicy;
     bool initialized;
-    Vector3 command;
     Vector3 requestedCommand;
     double commandUpdatedAt = double.NegativeInfinity;
     MicroDuckSurfaces surfaces;
@@ -138,7 +143,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     public void SetVelocityCommand(float forward, float left, float yawRate)
     {
         requestedCommand = new Vector3(forward, left, yawRate);
-        commandUpdatedAt = Time.realtimeSinceStartupAsDouble;
+        commandUpdatedAt = data != null ? data->time : 0;
     }
 
     public Transform Trunk { get; private set; }
@@ -210,14 +215,12 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
                 BeginPerformanceCapture();
             if (MujocoLib.mjVERSION_HEADER != 3015000 || MujocoLib.mj_version() != 3015000)
                 throw new InvalidOperationException("MicroDuck requires the MuJoCo 3.15.0 runtime and bindings.");
-            if (standingModel == null || walkingModel == null || sceneXml == null ||
+            if (controlPolicies == null || controlPolicies.Length == 0 || sceneXml == null ||
                 nativeAssets == null || bodies == null || bodies.Length == 0)
-                throw new InvalidOperationException("Locomotion requires both policies, native scene assets and body transforms.");
+                throw new InvalidOperationException("Locomotion requires packaged Pollen policies, native scene assets and body transforms.");
             ValidateAnchor();
 
-            standingWorker = CreateWorker(standingModel);
-            walkingWorker = CreateWorker(walkingModel);
-            input = new Tensor<float>(new TensorShape(1, ObservationCount));
+            pollen = new MicroDuckPollenControl(controlPolicies);
 
             surfaces = new MicroDuckSurfaces(transform);
             var scanStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
@@ -233,7 +236,6 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             surfaces.BindNativeModel(model);
             initialized = true;
             ApplyInitialState();
-            RunPolicy(walkingWorker);
         }
         catch
         {
@@ -249,6 +251,9 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         ValidateAnchor();
         // Move the prepared simulation to its placement anchor without rebuilding resources.
         // Contacts, gravity, actions and clocks belong to the new initial state.
+        // Reset the controller only for a new explicit placement. Falls and room
+        // changes retain its state and never reset the physical robot.
+        pollen.ResetPlacement();
         MujocoLib.mj_resetData(model, data);
         InitializeNativeState();
         RefreshSurfaces();
@@ -374,6 +379,12 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
                 if (actuatorIds[i] == actuatorIds[j])
                     throw new InvalidOperationException("MuJoCo actuator transmission mapping is not one-to-one.");
 
+        for (var i = 0; i < JointCount; i++)
+        {
+            baseGain[i] = model->actuator_gainprm[actuatorIds[i] * MujocoLib.mjNGAIN];
+            baseBiasPosition[i] = model->actuator_biasprm[actuatorIds[i] * MujocoLib.mjNBIAS + 1];
+        }
+        appliedGainRatio = double.NaN;
         var gyroId = MujocoLib.mj_name2id(model, (int)MujocoLib.mjtObj.mjOBJ_SENSOR, "imu_ang_vel");
         if (gyroId < 0 || model->sensor_dim[gyroId] != 3 ||
             model->sensor_type[gyroId] != (int)MujocoLib.mjtSensor.mjSENS_GYRO)
@@ -406,9 +417,8 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     unsafe void InitializeNativeState()
     {
-        command = requestedCommand = Vector3.zero;
+        requestedCommand = Vector3.zero;
         commandUpdatedAt = double.NegativeInfinity;
-        Array.Clear(lastAction, 0, lastAction.Length);
         substepsSincePolicy = 0;
         nextSurfaceRefresh = 0.25;
         previousFrameTimestamp = 0;
@@ -525,6 +535,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         model = replacementModel;
         data = replacementData;
         ResolveModelElements();
+        ApplyGainRatio(motorOutput.torque != 0 ? motorOutput.gain / 200.0 : 0.0);
         ApplyNativePoses();
         performance?.RecordSurfaceRefresh(true, 0);
         performance?.RecordRebuildReasons(
@@ -572,81 +583,60 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         ApplyNativePoses();
     }
 
-    static Worker CreateWorker(ModelAsset asset)
-    {
-        var network = ModelLoader.Load(asset);
-        if (network.inputs.Count != 1 || network.outputs.Count != 1 ||
-            network.inputs[0].dataType != DataType.Float ||
-            network.inputs[0].shape != new DynamicTensorShape(1, ObservationCount))
-            throw new InvalidOperationException("Locomotion requires float observations [1,61] and one action output.");
-        return new Worker(network, BackendType.CPU);
-    }
-
-    Tensor<float> RunPolicy(Worker worker)
+    // Pollen owns observation construction, command filtering, policy history,
+    // gains and fall transitions. This adapter only exchanges native robot data.
+    unsafe void StepPolicy()
     {
         var started = performance != null ? Stopwatch.GetTimestamp() : 0;
         using var marker = PolicyMarker.Auto();
-        worker.Schedule(input);
-        var output = worker.PeekOutput() as Tensor<float>;
-        if (output == null || output.shape != new TensorShape(1, JointCount))
-            throw new InvalidOperationException("Locomotion policy must produce float actions [1,14].");
-        output.CompleteAllPendingOperations();
+        var sensors = new MicroDuckPollenControl.SensorSnapshot();
+        for (var i = 0; i < JointCount; i++)
+        {
+            // Upstream's physical order includes a mouth slot at index 9; the
+            // imported simulation has the same 14 active joints and no mouth.
+            var wire = i < 9 ? i : i + 1;
+            sensors.positions[wire] = data->qpos[jointQpos[i]];
+            sensors.velocities[wire] = data->qvel[jointDof[i]];
+            // Same development-simulator load proxy as the daemon adapter.
+            sensors.currents_ma[wire] = Math.Abs(data->actuator_force[actuatorIds[i]]) * 100.0;
+        }
+        var gravity = nativeGravity.normalized;
+        for (var i = 0; i < 3; i++)
+        {
+            sensors.gyro[i] = data->sensordata[gyroAddress + i];
+            sensors.gravity[i] = data->xmat[rootBodyId * 9 + i] * gravity.x +
+                data->xmat[rootBodyId * 9 + 3 + i] * gravity.y +
+                data->xmat[rootBodyId * 9 + 6 + i] * gravity.z;
+        }
+        for (var i = 0; i < 4; i++) sensors.quat[i] = data->xquat[rootBodyId * 4 + i];
+        Uprightness = (float)-sensors.gravity[2];
+        var requested = data->time - commandUpdatedAt <= CommandTimeout ? requestedCommand : Vector3.zero;
+        var velocity = new MicroDuckPollenControl.VelocityCommand {
+            forward = requested.x, left = requested.y, yaw_rate = requested.z
+        };
+        pollen.Step(ref sensors, ref velocity, checked((ulong)Math.Round(data->time * 1_000_000.0)), out motorOutput);
+        ApplyGainRatio(motorOutput.torque != 0 ? motorOutput.gain / 200.0 : 0.0);
+        fixed (double* targets = motorOutput.targets)
+            for (var i = 0; i < JointCount; i++)
+            {
+                var target = targets[i < 9 ? i : i + 1];
+                if (double.IsNaN(target) || double.IsInfinity(target))
+                    throw new InvalidOperationException("Pollen returned a non-finite joint target.");
+                data->ctrl[actuatorIds[i]] = target;
+            }
         performance?.Record(MicroDuckPerformance.Timing.Policy, started);
-        return output;
     }
 
-    unsafe void StepPolicy()
+    void ApplyGainRatio(double ratio)
     {
-        // Match robotd's command EMA at the policy's 50 Hz, not Unity's frame rate.
-        var target = Time.realtimeSinceStartupAsDouble - commandUpdatedAt <= CommandTimeout
-            ? requestedCommand
-            : Vector3.zero;
-        command += CommandSmoothing * (target - command);
-        input.CompleteAllPendingOperations();
-        // mjOBJ_BODY velocity is in the inertial frame, not the policy's IMU frame.
-        var gyroX = (float)data->sensordata[gyroAddress];
-        var gyroY = (float)data->sensordata[gyroAddress + 1];
-        var gyroZ = (float)data->sensordata[gyroAddress + 2];
-        var gravity = nativeGravity.normalized;
-        var gravityX = gravity.x;
-        var gravityY = gravity.y;
-        var gravityZ = gravity.z;
-        var r00 = data->xmat[rootBodyId * 9];
-        var r10 = data->xmat[rootBodyId * 9 + 3];
-        var r20 = data->xmat[rootBodyId * 9 + 6];
-        var r01 = data->xmat[rootBodyId * 9 + 1];
-        var r11 = data->xmat[rootBodyId * 9 + 4];
-        var r21 = data->xmat[rootBodyId * 9 + 7];
-        var r02 = data->xmat[rootBodyId * 9 + 2];
-        var r12 = data->xmat[rootBodyId * 9 + 5];
-        var r22 = data->xmat[rootBodyId * 9 + 8];
-        input[0] = gyroX;
-        input[1] = gyroY;
-        input[2] = gyroZ;
-        input[3] = (float)(r00 * gravityX + r10 * gravityY + r20 * gravityZ);
-        input[4] = (float)(r01 * gravityX + r11 * gravityY + r21 * gravityZ);
-        input[5] = (float)(r02 * gravityX + r12 * gravityY + r22 * gravityZ);
+        if (appliedGainRatio == ratio) return;
         for (var i = 0; i < JointCount; i++)
         {
-            input[6 + i] = (float)(data->qpos[jointQpos[i]] - DefaultPositions[i]);
-            input[20 + i] = (float)data->qvel[jointDof[i]];
-            input[34 + i] = lastAction[i];
+            var actuator = actuatorIds[i];
+            model->actuator_gainprm[actuator * MujocoLib.mjNGAIN] = baseGain[i] * ratio;
+            model->actuator_biasprm[actuator * MujocoLib.mjNBIAS + 1] = baseBiasPosition[i] * ratio;
         }
-        input[48] = command.x;
-        input[49] = command.y;
-        input[50] = command.z;
-        var output = RunPolicy(command.sqrMagnitude > StandingThreshold * StandingThreshold
-            ? walkingWorker
-            : standingWorker);
-        var actions = output.AsReadOnlyNativeArray();
-        for (var i = 0; i < JointCount; i++)
-            if (float.IsNaN(actions[i]) || float.IsInfinity(actions[i]))
-                throw new InvalidOperationException("Locomotion policy produced a non-finite joint action.");
-        for (var i = 0; i < JointCount; i++)
-        {
-            lastAction[i] = actions[i];
-            data->ctrl[actuatorIds[i]] = DefaultPositions[i] + actions[i];
-        }
+        appliedGainRatio = ratio;
     }
 
     unsafe void ApplyNativePoses()
@@ -675,12 +665,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     {
         initialized = false;
         previousFrameTimestamp = 0;
-        standingWorker?.Dispose();
-        standingWorker = null;
-        walkingWorker?.Dispose();
-        walkingWorker = null;
-        input?.Dispose();
-        input = null;
+        pollen?.Dispose();
+        pollen = null;
+        motorOutput = default;
+        appliedGainRatio = double.NaN;
         surfaces?.Dispose();
         surfaces = null;
         nextSurfaceRefresh = 0;

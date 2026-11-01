@@ -1,0 +1,18 @@
+Pollen Robotics native control integration
+
+Controller source: https://github.com/pollen-robotics/microduck
+Source revision: b2b0d213a402caeac492dd662ea891faa17f67c0
+Source license: Apache License 2.0 (LICENSE.txt)
+
+Policy weights: https://huggingface.co/pollen-robotics/microduck-policies
+Model revision: 665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448
+The pinned model card declares license: apache-2.0 (policy-model-card.md).
+The model bytes are distributed unchanged; .bytes is a Unity import extension.
+pickup_detector.onnx comes from the controller source revision above.
+
+The Unity host and native library adapter are local modifications. The native
+library embeds Pollen control code; it does not install or run Pollen's system
+services. Source patches and build provenance are under Tools/PollenControl.
+
+ONNX Runtime 1.23.2 is distributed under the MIT License. Its license and third-
+party notices are in the sibling ONNXRuntime directory.

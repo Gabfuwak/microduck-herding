@@ -1827,6 +1827,7 @@ GameObject:
   - component: {fileID: 7083051922389033350}
   - component: {fileID: 7049505626276217519}
   - component: {fileID: 1162321231388312969}
+  - component: {fileID: 7252640165699626553}
   m_Layer: 0
   m_Name: MicroDuck
   m_TagString: Untagged
@@ -1862,8 +1863,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd40bd216c1a49f393ecbc04a3d97b59, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MicroDuckPolicyController
-  standingModel: {fileID: 5022602860645237092, guid: d75ce2cfc0964d1aa91a3020fbf82d72, type: 3}
-  walkingModel: {fileID: 5022602860645237092, guid: 8c4d9901b7f2420a9b522998d4aa813e, type: 3}
+  controlPolicies:
+  - {fileID: 4900000, guid: 02c095bc336951c096b458d6cc8387ff, type: 3}
+  - {fileID: 4900000, guid: 61173edb5211518082d623e270ff45b1, type: 3}
+  - {fileID: 4900000, guid: ce7cbdd40a9c5e3a8a53f0115f8a1359, type: 3}
+  - {fileID: 4900000, guid: f9f8c2d823c956dfbec584b20a424fc9, type: 3}
+  - {fileID: 4900000, guid: 1671a4c42dc15da8a6852d8ecbd90c17, type: 3}
+  - {fileID: 4900000, guid: 2bb4908e5aea5450a2e3c0afe57cf0f1, type: 3}
+  - {fileID: 4900000, guid: 40279b7cd0a95076be72607de866aee9, type: 3}
+  - {fileID: 4900000, guid: 82a4c788a84f55b1bbf050eec4290013, type: 3}
+  - {fileID: 4900000, guid: bff1538d2fca55c4ae9da5ba8a0bed70, type: 3}
+  - {fileID: 4900000, guid: 6bf17e5b113b55e780c520d903cf8f11, type: 3}
+  - {fileID: 4900000, guid: de154ebadfc751edb1cd6e1c2db2573e, type: 3}
+  - {fileID: 4900000, guid: 6a4a5d9442745a1b8391008b38346d7c, type: 3}
   sceneXml: {fileID: 4900000, guid: a6c2be38992425519a7eb941651db589, type: 3}
   nativeAssets:
   - filename: assets/bottom_head_shell.stl
@@ -1928,6 +1940,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cb9357f2849467fbbf90255c2ddc698, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MicroDuckJoystick
+--- !u!114 &7252640165699626553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2774184874629296922}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9a76f5c7d7484c6d91f624a6dd201c9b, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckNavigator
+  maximumDropHeight: 0.9
+  speed: 0.4
+  agentRadius: 0.16
+  yawSpeed: 0.55
 --- !u!1 &2815090826019926257
 GameObject:
   m_ObjectHideFlags: 0

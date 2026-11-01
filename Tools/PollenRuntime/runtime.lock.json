@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "onnxruntime_version": "1.23.2",
+  "policy_repository": "pollen-robotics/microduck-policies",
+  "policy_revision": "665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448",
+  "controller_revision": "b2b0d213a402caeac492dd662ea891faa17f67c0",
+  "sources": [
+    {
+      "cache_name": "onnxruntime-linux-x64-1.23.2.tgz",
+      "url": "https://github.com/microsoft/onnxruntime/releases/download/v1.23.2/onnxruntime-linux-x64-1.23.2.tgz",
+      "sha256": "1fa4dcaef22f6f7d5cd81b28c2800414350c10116f5fdd46a2160082551c5f9b",
+      "format": "tgz",
+      "artifacts": [
+        {
+          "member": "onnxruntime-linux-x64-1.23.2/lib/libonnxruntime.so.1.23.2",
+          "destination": "Assets/Plugins/Linux/x86_64/libonnxruntime.so",
+          "sha256": "13ab8084954fa4a47c777880180b90810d6020f021441395712b48a75b74c68b",
+          "platform": "linux-x86_64"
+        },
+        {
+          "member": "onnxruntime-linux-x64-1.23.2/LICENSE",
+          "destination": "Assets/StreamingAssets/NativeLicenses/ONNXRuntime/LICENSE.txt",
+          "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+        },
+        {
+          "member": "onnxruntime-linux-x64-1.23.2/ThirdPartyNotices.txt",
+          "destination": "Assets/StreamingAssets/NativeLicenses/ONNXRuntime/ThirdPartyNotices.txt",
+          "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
+        }
+      ]
+    },
+    {
+      "cache_name": "onnxruntime-android-1.23.2.aar",
+      "url": "https://repo.maven.apache.org/maven2/com/microsoft/onnxruntime/onnxruntime-android/1.23.2/onnxruntime-android-1.23.2.aar",
+      "sha256": "82048d1f462218adae4ba76477089ab0ba76093d84f733540066db1a8ba6b827",
+      "format": "zip",
+      "artifacts": [
+        {
+          "member": "jni/arm64-v8a/libonnxruntime.so",
+          "destination": "Assets/Plugins/Android/arm64-v8a/libonnxruntime.so",
+          "sha256": "e40f09d07dc53726b8bfbf48a7907673b8f86718a057655a62790a39874a7302",
+          "platform": "android-arm64"
+        }
+      ]
+    },
+    {
+      "cache_name": "alpha_ground_pick.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/alpha_ground_pick.onnx",
+      "sha256": "ffbf5109982ff999b0ba53afe86b9ae731bbec679d67fb7f8ab4c52152c88872",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/alpha_ground_pick.onnx.bytes",
+          "sha256": "ffbf5109982ff999b0ba53afe86b9ae731bbec679d67fb7f8ab4c52152c88872"
+        }
+      ]
+    },
+    {
+      "cache_name": "alpha_sitstand.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/alpha_sitstand.onnx",
+      "sha256": "a6f102d9fd655782ba85bfffe18175c34621da719cffcdd673be7982a06fc254",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/alpha_sitstand.onnx.bytes",
+          "sha256": "a6f102d9fd655782ba85bfffe18175c34621da719cffcdd673be7982a06fc254"
+        }
+      ]
+    },
+    {
+      "cache_name": "alpha_stand.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/alpha_stand.onnx",
+      "sha256": "1569268713e40deea795dd2922dba50d3621e15a872855408b6b1b125b1c094b",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/alpha_stand.onnx.bytes",
+          "sha256": "1569268713e40deea795dd2922dba50d3621e15a872855408b6b1b125b1c094b"
+        }
+      ]
+    },
+    {
+      "cache_name": "alpha_walking.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/alpha_walking.onnx",
+      "sha256": "e36332d383997d51401897734cd3e79cf5038406feddb18b4d57ecfb141daa6c",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/alpha_walking.onnx.bytes",
+          "sha256": "e36332d383997d51401897734cd3e79cf5038406feddb18b4d57ecfb141daa6c"
+        }
+      ]
+    },
+    {
+      "cache_name": "ball_kick_left.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/ball_kick_left.onnx",
+      "sha256": "d6928284dccd3dd61e08bf2f760effa74309fbefd97b2b31afb2a60f526d196a",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/ball_kick_left.onnx.bytes",
+          "sha256": "d6928284dccd3dd61e08bf2f760effa74309fbefd97b2b31afb2a60f526d196a"
+        }
+      ]
+    },
+    {
+      "cache_name": "ball_kick_right.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/ball_kick_right.onnx",
+      "sha256": "147a32c388c6b19111b3ac3b550a9a6dc8b8bf267118af4d8c3712522eedb5af",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/ball_kick_right.onnx.bytes",
+          "sha256": "147a32c388c6b19111b3ac3b550a9a6dc8b8bf267118af4d8c3712522eedb5af"
+        }
+      ]
+    },
+    {
+      "cache_name": "roller.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/roller.onnx",
+      "sha256": "cf05651d2708a2f9364212e86b866c97a70ace8131c492500105e8f28bf99afd",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/roller.onnx.bytes",
+          "sha256": "cf05651d2708a2f9364212e86b866c97a70ace8131c492500105e8f28bf99afd"
+        }
+      ]
+    },
+    {
+      "cache_name": "roller_crouch.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/roller_crouch.onnx",
+      "sha256": "a1a084be240469c76ac9d3fa44d4792f16d4b1da60398b3ecd3cfc5e2244d990",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/roller_crouch.onnx.bytes",
+          "sha256": "a1a084be240469c76ac9d3fa44d4792f16d4b1da60398b3ecd3cfc5e2244d990"
+        }
+      ]
+    },
+    {
+      "cache_name": "roulade.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/roulade.onnx",
+      "sha256": "3d60da08fc13f29c1b57f41977aa898132c0d60042100149d8e775affcbca32b",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/roulade.onnx.bytes",
+          "sha256": "3d60da08fc13f29c1b57f41977aa898132c0d60042100149d8e775affcbca32b"
+        }
+      ]
+    },
+    {
+      "cache_name": "velstand.onnx",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/velstand.onnx",
+      "sha256": "2fc7f8ee6acd7d0d3f66a99927b5d5a56589aeed02ec714de329b252d5ccf492",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/velstand.onnx.bytes",
+          "sha256": "2fc7f8ee6acd7d0d3f66a99927b5d5a56589aeed02ec714de329b252d5ccf492"
+        }
+      ]
+    },
+    {
+      "cache_name": "manifest.json",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/manifest.json",
+      "sha256": "efeec8363a16bf2b01be61c46e8ee2566cccb3c22683717b122be261bb6eaf7a",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/manifest.json.bytes",
+          "sha256": "efeec8363a16bf2b01be61c46e8ee2566cccb3c22683717b122be261bb6eaf7a"
+        }
+      ]
+    },
+    {
+      "cache_name": "pollen-model-README.md",
+      "url": "https://huggingface.co/pollen-robotics/microduck-policies/resolve/665ae4eb20bfe13bca1ef4ea6d4bb6b4a096e448/README.md",
+      "sha256": "491b39e6bd8ddb2840c7d12a39650331ef87412aa46d834980d8076504f5b8e7",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/StreamingAssets/NativeLicenses/PollenControl/policy-model-card.md",
+          "sha256": "491b39e6bd8ddb2840c7d12a39650331ef87412aa46d834980d8076504f5b8e7"
+        }
+      ]
+    },
+    {
+      "cache_name": "pollen-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/pollen-robotics/microduck/b2b0d213a402caeac492dd662ea891faa17f67c0/LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/StreamingAssets/NativeLicenses/PollenControl/LICENSE.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "cache_name": "pickup_detector.onnx",
+      "url": "https://raw.githubusercontent.com/pollen-robotics/microduck/b2b0d213a402caeac492dd662ea891faa17f67c0/duck-control/models/pickup_detector.onnx",
+      "sha256": "d93a33878e028c79deadf3f50fef4602a6b601acb700f81b5a4c0a06cc6c1b75",
+      "format": "raw",
+      "artifacts": [
+        {
+          "destination": "Assets/Robots/MicroDuck/Policies/Pollen/pickup_detector.onnx.bytes",
+          "sha256": "d93a33878e028c79deadf3f50fef4602a6b601acb700f81b5a4c0a06cc6c1b75"
+        }
+      ]
+    }
+  ]
+}
