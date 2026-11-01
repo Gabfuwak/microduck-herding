@@ -16,6 +16,9 @@ input: left stick forward/back (up to +/-0.4 m/s) and sideways (+/-0.3 m/s), rig
 stick horizontal turns (+/-1 rad/s), all relative to the duck. Release to stand.
 Both controllers must be tracked; centre the sticks after spawning, reconnecting,
 or returning from focus/pause before driving. Hands-only tracking leaves it standing.
+The XR Origin Hands rig variant disconnects both controllers' teleport mode/cancel
+actions. Right-stick forward no longer starts the template's red invalid-teleport
+ray or switches away from normal UI pointing. Robot joystick mappings are unchanged.
 
 Hand UI lives in Assets/UI/MicroDuck and is included in MainScene:
 - MicroDuckHandMenu.prefab shares tracked anchors between two stock XRI HandMenu
@@ -41,6 +44,9 @@ User-run headset check:
   the Planes label. Verify visual feedback without changing the robot or room.
 - Hide/reveal after changing toggles; confirm selections remain and UI clicks do
   not trigger world placement behind the panel.
+- Push the right stick forward and release, including after switching between
+  hands and controllers: no teleport ray should appear. Check right-stick turning,
+  left-stick movement, controller UI clicks and placement still work.
 Do not launch Unity builds or automated tests on the user's behalf.
 
 Share source through Git: Assets, Packages, ProjectSettings, Tools and the source
