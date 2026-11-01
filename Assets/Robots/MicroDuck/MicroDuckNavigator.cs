@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Rendering;
+using UnityEngine.XR;
 
 // Unity plans the route; the joystick remains the only continuous command owner.
 [DisallowMultipleComponent]
@@ -9,11 +10,13 @@ public sealed class MicroDuckNavigator : MonoBehaviour
 {
     public string Status { get; private set; } = "Click a surface to walk there";
     public bool HasDestination { get; private set; }
+    public bool IsFollowing => following && HasDestination;
     public Vector3 Destination { get; private set; }
     public Vector3 LastCommand { get; private set; }
 
     const float ArrivalRadius = 0.055f;
     const float GoalHeightTolerance = 0.07f;
+    const float FollowDistance = 0.45f;
     static readonly Color RouteColor = new(0.2f, 1f, 0.65f);
     static readonly Color UnreachableColor = new(1f, 0.65f, 0.15f);
 
@@ -43,6 +46,10 @@ public sealed class MicroDuckNavigator : MonoBehaviour
     bool initialized;
     bool bakeReady;
     bool destroying;
+    Transform followTarget;
+    bool following;
+    bool followNeedsPlan;
+    Vector3 projectedFollowTarget;
 
     public void Initialize(MicroDuckPolicyController policy)
     {
@@ -118,6 +125,9 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             pendingPoint = worldPoint;
             hasPendingPoint = true;
             HasDestination = true;
+            following = false;
+            followNeedsPlan = false;
+            followTarget = null;
             return true;
         }
         return AcceptDestination(worldPoint);
@@ -134,6 +144,9 @@ public sealed class MicroDuckNavigator : MonoBehaviour
 
         Destination = hit.position;
         HasDestination = true;
+        following = false;
+        followNeedsPlan = false;
+        followTarget = null;
         previousCommand = Vector3.zero;
         recoveryAttempt = 0;
         recoveryUntil = 0f;
@@ -142,6 +155,25 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         bestDistance = planned ? RemainingDistance() : float.PositiveInfinity;
         Status = planned ? "Walking to target" : "No route yet — goal kept, retrying";
         DrawMarker();
+        return true;
+    }
+
+    public bool Follow(Transform target)
+    {
+        if (!initialized || destroying || target == null)
+            return false;
+
+        followTarget = target;
+        following = true;
+        followNeedsPlan = true;
+        hasPendingPoint = false;
+        HasDestination = true;
+        nextPlan = 0f;
+        previousCommand = LastCommand = Vector3.zero;
+        progressAt = Time.time;
+        recoveryUntil = 0f;
+        cornerCount = 0;
+        Status = "Following headset";
         return true;
     }
 
@@ -168,6 +200,11 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             Status = "Could not add navigation mesh";
             HasDestination = false;
             hasPendingPoint = false;
+            return;
+        }
+        if (following)
+        {
+            nextPlan = 0f;
             return;
         }
         if (hasPendingPoint)
@@ -219,14 +256,83 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         return distance;
     }
 
+    bool TryGetFollowGoal(Vector3 feet, out (Vector3 target, Vector3 destination) goal)
+    {
+        goal = default;
+        if (followTarget == null || !HeadsetTrackingAvailable())
+            return false;
+
+        // Project vertically onto the duck's walking level, not onto an
+        // arbitrary nearby table. Keep the headset's exact XZ as the centre.
+        var headPosition = followTarget.position;
+        headPosition.y = feet.y;
+        if (!NavMesh.SamplePosition(headPosition, out var surface, 0.16f, filter) ||
+            Mathf.Abs(surface.position.y - feet.y) > GoalHeightTolerance)
+            return false;
+        headPosition.y = surface.position.y;
+        var towardDuck = Flat(trunk.position - headPosition);
+        var destination = headPosition + towardDuck.normalized * FollowDistance;
+        if (!NavMesh.SamplePosition(destination, out var approach, 0.12f, filter) ||
+            Mathf.Abs(approach.position.y - headPosition.y) > GoalHeightTolerance ||
+            Flat(approach.position - headPosition).sqrMagnitude < FollowDistance * FollowDistance - 0.0001f)
+            return false;
+        goal = (headPosition, approach.position);
+        return true;
+    }
+
+    static bool HeadsetTrackingAvailable()
+    {
+        var device = InputDevices.GetDeviceAtXRNode(XRNode.CenterEye);
+        if (device.isValid && device.TryGetFeatureValue(CommonUsages.isTracked, out var tracked))
+            return tracked;
+#if UNITY_EDITOR
+        return true;
+#else
+        return false;
+#endif
+    }
+
     public Vector3 Tick(float dt)
     {
         LastCommand = Vector3.zero;
         if (!initialized || !bakeReady || !instance.valid || !HasDestination)
             return Vector3.zero;
         var feet = controller.FootMidpoint;
-        if (Flat(Destination - trunk.position).magnitude < ArrivalRadius &&
-            Mathf.Abs(feet.y - Destination.y) < 0.09f)
+        if (following)
+        {
+            if (!TryGetFollowGoal(feet, out var goal))
+            {
+                followNeedsPlan = true;
+                cornerCount = 0;
+                if (route != null) route.positionCount = 0;
+                if (marker != null) marker.positionCount = 0;
+                previousCommand = LastCommand = Vector3.zero;
+                Status = "Headset unavailable — waiting";
+                return Vector3.zero;
+            }
+
+            projectedFollowTarget = goal.target;
+            if (Time.time >= nextPlan &&
+                (followNeedsPlan || Flat(Destination - goal.destination).sqrMagnitude > 0.0064f ||
+                 cornerCount == 0))
+            {
+                Destination = goal.destination;
+                var planned = Plan();
+                followNeedsPlan = false;
+                bestDistance = planned ? RemainingDistance() : float.PositiveInfinity;
+                if (marker != null) DrawMarker();
+                Status = planned ? "Following headset" : "No route yet — following, retrying";
+            }
+            var toHeadset = Flat(goal.target - trunk.position);
+            if (toHeadset.sqrMagnitude <= FollowDistance * FollowDistance)
+            {
+                previousCommand = LastCommand = Vector3.zero;
+                Status = "Following — holding distance";
+                return Vector3.zero;
+            }
+        }
+        else if (Flat(Destination - trunk.position).magnitude < ArrivalRadius &&
+                 Mathf.Abs(feet.y - Destination.y) < 0.09f)
         {
             Cancel();
             Status = "Arrived";
@@ -240,7 +346,6 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             previousCommand = Vector3.zero;
             return Vector3.zero;
         }
-
         while (corner < cornerCount - 1 && Flat(cornerBuffer[corner] - trunk.position).magnitude < 0.055f)
             corner++;
         var remaining = RemainingDistance();
@@ -249,7 +354,7 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             bestDistance = remaining;
             progressAt = Time.time;
         }
-        if (Time.time - progressAt > 4f && Time.time >= recoveryUntil)
+        if (!following && Time.time - progressAt > 4f && Time.time >= recoveryUntil)
         {
             recoveryAttempt++;
             recoveryUntil = Time.time + 0.8f;
@@ -276,6 +381,8 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         var right = Vector3.Cross(Vector3.up, forward);
         var angle = error.sqrMagnitude > 0.000001f ? Vector3.SignedAngle(forward, error, Vector3.up) : 0f;
         var speed = Mathf.Clamp(remaining * 0.8f, 0.16f, 0.35f);
+        if (following)
+            speed = Mathf.Min(speed, Mathf.Max(0f, Flat(projectedFollowTarget - trunk.position).magnitude - FollowDistance) * 1.2f);
         var velocity = error.sqrMagnitude > 0.000001f ? error.normalized * speed : Vector3.zero;
         var desired = new Vector3(
             Mathf.Clamp(Vector3.Dot(velocity, forward), -0.15f, 0.35f),
@@ -283,8 +390,8 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             Mathf.Clamp(-angle * Mathf.Deg2Rad * 1.8f, -0.8f, 0.8f));
         if (Mathf.Abs(angle) > 65f)
             desired.x = 0f;
-        Status = "Walking to target";
-        if (Time.time < recoveryUntil)
+        Status = following ? "Following headset" : "Walking to target";
+        if (!following && Time.time < recoveryUntil)
         {
             Status = "Retrying route — goal kept";
             var recovery = recoveryAttempt % 3 == 1
@@ -300,6 +407,21 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         previousCommand.x = Mathf.MoveTowards(previousCommand.x, desired.x, dt * 0.45f);
         previousCommand.y = Mathf.MoveTowards(previousCommand.y, desired.y, dt * 0.45f);
         previousCommand.z = Mathf.MoveTowards(previousCommand.z, desired.z, dt * 2f);
+        if (following)
+        {
+            var toHeadset = Flat(projectedFollowTarget - trunk.position);
+            var distance = toHeadset.magnitude;
+            var inward = toHeadset / distance;
+            var worldCommand = forward * previousCommand.x - right * previousCommand.y;
+            var closingSpeed = Vector3.Dot(worldCommand, inward);
+            var maxClosingSpeed = Mathf.Max(0f, distance - FollowDistance) / Mathf.Max(dt, 0.0001f);
+            if (closingSpeed > maxClosingSpeed)
+            {
+                worldCommand -= inward * (closingSpeed - maxClosingSpeed);
+                previousCommand.x = Vector3.Dot(worldCommand, forward);
+                previousCommand.y = -Vector3.Dot(worldCommand, right);
+            }
+        }
         LastCommand = previousCommand;
         DrawRoute(feet);
         return LastCommand;
@@ -358,6 +480,9 @@ public sealed class MicroDuckNavigator : MonoBehaviour
     {
         HasDestination = false;
         hasPendingPoint = false;
+        following = false;
+        followNeedsPlan = false;
+        followTarget = null;
         previousCommand = LastCommand = Vector3.zero;
         Status = "Stopped";
         if (route != null) route.positionCount = 0;

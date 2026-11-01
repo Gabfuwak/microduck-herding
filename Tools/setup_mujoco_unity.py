@@ -29,23 +29,27 @@ Hand UI lives in Assets/UI/MicroDuck and is included in MainScene:
   MicroDuckMicrophoneView swaps its normal/crossed-out icon and tint.
 - MicroDuckMainMenu.prefab is the viewer-facing Settings panel beside the palm.
   It uses a standard Reset Button and Left/Right ToggleGroup; MicroDuckSwitchView
-  updates the Planes toggle's track colour and thumb position.
+  updates the Planes and Follow me toggles' track colour and thumb position.
 Both canvases use TrackedDeviceGraphicRaycaster with the existing XR input rig.
 Placement, size, follow behaviour and hit-area padding are configured in the
 prefabs. Both view scripts update on value changes and reveal, not every frame.
 
 MicroDuckHandMenuControls lives on the always-active menu root. MainScene assigns
 its spawner and ARPlaneManager references; the prefab assigns its controls/followers.
-It binds UI and plane-added events, without per-frame searches:
+It binds UI and plane-added events and reflects follow state each LateUpdate,
+using the spawner's cached navigator rather than per-frame component searches:
 - Reset robot despawns the live duck and returns to the initial placement flow.
   Its simulation resources are released; the existing preload path prepares a new
   hidden duck. The next placement gesture chooses its position. Before placement,
   Reset does nothing.
+- Follow me is disabled before placement. Enabling it follows the headset with
+  a 45 cm stand-off; disabling it cancels following. Joystick input, an accepted
+  surface destination or Reset clears the follow state and switches the toggle off.
+  Hiding the hand menu does not stop following.
 - Planes changes Renderer.forceRenderingOff on existing and newly detected AR
   planes. Tracking, mesh generation, placement raycasts and MuJoCo collisions stay
   active; it does not hide the physical room or desktop simulation environment.
 - Left/Right moves both UI followers to the selected hand, with mirrored offsets.
-The microphone remains visual-only: no capture, speech or expansion is connected.
 Toggle values survive hiding/revealing the menu instance, not app restarts.
 
 Navigation reuses Andre's planner/follower from commit
@@ -62,7 +66,19 @@ MuJoCo/the existing policies still move and balance the robot, not a NavMeshAgen
 The target circle/route is green for a complete route and amber when no route is
 available. Invalid surface points keep the previous goal. Disconnected surfaces
 do not become jumps; a walkable but unreachable goal stays pending and replans.
-This does not add speech, new policies, stand-up recovery or dynamic room mapping.
+The Follow me toggle only acts on an already-placed duck. It keeps a follow goal
+active after arrival: the approach point is 45 cm horizontally from the headset's
+XZ centre, on the duck's current walking level. Camera rotation does not affect it.
+Headset movement updates the target and periodically replans on the existing
+NavMesh, without resetting command smoothing or rebuilding the room. Invalid
+surface projection, lost tracking or an incomplete route stops movement requests;
+following stays active and can resume. Ordinary navigation's recovery bursts are
+not used while following. A new accepted gesture destination, stick input or Reset
+cancels following. The microphone remains a visual-only toggle: no capture,
+permissions, recognition service or credentials are used.
+The radius constrains requested movement, not the robot's physical footprint:
+policy lag/overshoot and headset-vs-feet position mean it is not a safety barrier.
+This does not add new policies, stand-up recovery or dynamic room mapping.
 
 User-run headset check:
 - Reset before placement, then after walking/falling: the duck should disappear
@@ -72,7 +88,9 @@ User-run headset check:
   surfaces. Show Planes again to restore their normal tracking-dependent visibility.
 - Switch Left/Right both ways, turning the selected hand to reveal Settings/mic.
   Use the opposite hand for pokes/ray clicks; confirm selections survive hide/reveal.
-- Check mic mute feedback and that UI clicks do not place another duck behind it.
+- Click the microphone circle: its icon/tint should toggle without recording,
+  requesting permission or affecting the robot. UI clicks must not place another
+  duck behind the menu.
 - Push the right stick forward and release, including after switching between
   hands and controllers: no teleport ray should appear. Check right-stick turning,
   left-stick movement, controller UI clicks and placement still work.
@@ -86,6 +104,17 @@ User-run headset check:
 - Open a system menu while walking: movement requests should stop; returning
   should resume toward the goal. Reset should remove duck, route and target even
   if a bake is still pending; place again to start a fresh navigation instance.
+- Before placement, Follow me should be off and disabled. Place the duck on the
+  floor, enable it and check that it approaches the 45 cm stand-off and stops.
+  Walk away: it should follow again without another click. Turn/tilt your head
+  without walking: the destination must not move with camera facing.
+- Disable Follow me: movement requests should stop. Re-enable, hide/reveal the
+  hand menu, and check that following and the switch's colour/thumb stay in sync.
+- Cancel following with a new valid surface destination, either stick, and Reset:
+  the toggle should turn off too. Reset disables it until the next placement.
+  Test an unreachable room area/table edge: it should wait, not chase an old
+  headset goal. Opening the system menu must stop movement; returning resumes
+  navigation.
 Do not launch Unity builds or automated tests on the user's behalf.
 
 Share source through Git: Assets, Packages, ProjectSettings, Tools and the source

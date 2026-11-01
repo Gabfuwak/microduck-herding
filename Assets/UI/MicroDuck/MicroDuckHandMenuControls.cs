@@ -11,6 +11,7 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
     [SerializeField] private ARPlaneManager m_PlaneManager;
     [SerializeField] private Button m_ResetButton;
     [SerializeField] private Toggle m_PlanesToggle;
+    [SerializeField] private Toggle m_FollowToggle;
     [SerializeField] private Toggle m_RightHandToggle;
     [SerializeField] private HandMenu m_SettingsFollower;
     [SerializeField] private HandMenu m_MicrophoneFollower;
@@ -25,6 +26,8 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
         m_PlaneManager.trackablesChanged.AddListener(OnPlanesChanged);
         SetPlanesVisible(m_PlanesToggle.isOn);
         SetRightHand(m_RightHandToggle.isOn);
+        RefreshFollowToggle();
+        m_FollowToggle.onValueChanged.AddListener(SetFollowing);
     }
 
     private void OnDisable()
@@ -32,7 +35,23 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
         m_ResetButton.onClick.RemoveListener(m_Spawner.ResetRobot);
         m_PlanesToggle.onValueChanged.RemoveListener(SetPlanesVisible);
         m_RightHandToggle.onValueChanged.RemoveListener(SetRightHand);
+        m_FollowToggle.onValueChanged.RemoveListener(SetFollowing);
         m_PlaneManager.trackablesChanged.RemoveListener(OnPlanesChanged);
+    }
+
+    private void LateUpdate() => RefreshFollowToggle();
+
+    private void RefreshFollowToggle()
+    {
+        m_FollowToggle.interactable = m_Spawner.HasRobot;
+        // Keep the switch visuals in sync too; SetFollowing ignores reflected state.
+        m_FollowToggle.isOn = m_Spawner.IsFollowing;
+    }
+
+    private void SetFollowing(bool follow)
+    {
+        if (follow != m_Spawner.IsFollowing)
+            m_Spawner.SetFollowing(follow);
     }
 
     private void SetRightHand(bool useRightHand)

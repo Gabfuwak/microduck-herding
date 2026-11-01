@@ -8,11 +8,15 @@ public sealed class MicroDuckSpawner : MonoBehaviour
     [SerializeField] private GameObject m_ObjectPrefab;
 
     private GameObject m_LiveDuck;
+    private MicroDuckNavigator m_LiveNavigator;
     private GameObject m_PreparedRoot;
     private GameObject m_PreparedDuck;
     private MicroDuckPolicyController m_PreparedController;
     private bool m_PreparationFailed;
     private float m_NextSurfaceRefresh;
+
+    public bool HasRobot => m_LiveDuck != null;
+    public bool IsFollowing => m_LiveNavigator != null && m_LiveNavigator.IsFollowing;
 
     public Camera cameraToFace
     {
@@ -96,7 +100,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
     public bool TryPlaceOrNavigate(Vector3 spawnPoint, Vector3 spawnNormal)
     {
         if (m_LiveDuck != null)
-            return m_LiveDuck.GetComponent<MicroDuckNavigator>().SetDestination(spawnPoint);
+            return m_LiveNavigator.SetDestination(spawnPoint);
         if (m_PreparationFailed)
             return false;
         if (m_PreparedDuck == null)
@@ -117,11 +121,13 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         {
             duck.transform.SetPositionAndRotation(spawnPoint, rotation);
             m_PreparedController.PlacePreparedSimulation();
-            duck.AddComponent<MicroDuckNavigator>().Initialize(m_PreparedController);
+            var navigator = duck.AddComponent<MicroDuckNavigator>();
+            navigator.Initialize(m_PreparedController);
 
             Transform root = m_PreparedRoot.transform;
             duck.transform.SetParent(null, true);
             m_LiveDuck = duck;
+            m_LiveNavigator = navigator;
             m_PreparedDuck = null;
             m_PreparedController = null;
             m_PreparedRoot = null;
@@ -142,6 +148,21 @@ public sealed class MicroDuckSpawner : MonoBehaviour
             Debug.LogWarning("Could not place MicroDuck or set its destination.", this);
     }
 
+    public void SetFollowing(bool follow)
+    {
+        if (m_LiveNavigator == null)
+            return;
+        if (!follow)
+        {
+            if (m_LiveNavigator.IsFollowing)
+                m_LiveNavigator.Cancel();
+            return;
+        }
+        Camera headsetCamera = cameraToFace;
+        if (headsetCamera != null)
+            m_LiveNavigator.Follow(headsetCamera.transform);
+    }
+
     public void ResetRobot()
     {
         if (m_LiveDuck == null)
@@ -150,6 +171,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         m_LiveDuck.SetActive(false);
         DestroyOwnedObject(m_LiveDuck);
         m_LiveDuck = null;
+        m_LiveNavigator = null;
         // Update prepares the next duck; placement still requires the user's gesture.
     }
 
