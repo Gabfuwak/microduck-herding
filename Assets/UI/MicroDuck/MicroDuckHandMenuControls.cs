@@ -9,6 +9,7 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
 {
     [SerializeField] private MicroDuckSpawner m_Spawner;
     [SerializeField] private ARPlaneManager m_PlaneManager;
+    [SerializeField] private Button m_GoThereButton;
     [SerializeField] private Button m_ResetButton;
     [SerializeField] private Toggle m_PlanesToggle;
     [SerializeField] private Toggle m_FollowToggle;
@@ -20,6 +21,7 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
 
     private void OnEnable()
     {
+        m_GoThereButton.onClick.AddListener(m_Spawner.BeginTargeting);
         m_ResetButton.onClick.AddListener(m_Spawner.ResetRobot);
         m_PlanesToggle.onValueChanged.AddListener(SetPlanesVisible);
         m_RightHandToggle.onValueChanged.AddListener(SetRightHand);
@@ -33,6 +35,7 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
     private void OnDisable()
     {
         m_ResetButton.onClick.RemoveListener(m_Spawner.ResetRobot);
+        m_GoThereButton.onClick.RemoveListener(m_Spawner.BeginTargeting);
         m_PlanesToggle.onValueChanged.RemoveListener(SetPlanesVisible);
         m_RightHandToggle.onValueChanged.RemoveListener(SetRightHand);
         m_FollowToggle.onValueChanged.RemoveListener(SetFollowing);
@@ -59,6 +62,7 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
         var hand = useRightHand ? HandMenu.MenuHandedness.Right : HandMenu.MenuHandedness.Left;
         m_SettingsFollower.menuHandedness = hand;
         m_MicrophoneFollower.menuHandedness = hand;
+        m_Spawner.TargetWithLeftHand = useRightHand;
     }
 
     private void SetPlanesVisible(bool visible)

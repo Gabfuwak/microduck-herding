@@ -525,6 +525,7 @@ MonoBehaviour:
   m_Spawner: {fileID: 0}
   m_PlaneManager: {fileID: 0}
   m_ResetButton: {fileID: 900200002}
+  m_GoThereButton: {fileID: 900200009}
   m_PlanesToggle: {fileID: 900200003}
   m_FollowToggle: {fileID: 900200007}
   m_RightHandToggle: {fileID: 900200004}
@@ -574,3 +575,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9085046f02f69544eb97fd06b6048fe2, type: 3}
   m_Name:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Toggle
+--- !u!114 &900200009 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 100534, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+  m_PrefabInstance: {fileID: 9000000020}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button

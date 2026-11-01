@@ -17,6 +17,8 @@ public sealed class MicroDuckSpawner : MonoBehaviour
 
     public bool HasRobot => m_LiveDuck != null;
     public bool IsFollowing => m_LiveNavigator != null && m_LiveNavigator.IsFollowing;
+    public bool IsTargeting { get; private set; } = true;
+    public bool TargetWithLeftHand { get; set; }
 
     public Camera cameraToFace
     {
@@ -99,8 +101,15 @@ public sealed class MicroDuckSpawner : MonoBehaviour
 
     public bool TryPlaceOrNavigate(Vector3 spawnPoint, Vector3 spawnNormal)
     {
+        if (!IsTargeting)
+            return false;
         if (m_LiveDuck != null)
-            return m_LiveNavigator.SetDestination(spawnPoint);
+        {
+            if (!m_LiveNavigator.SetDestination(spawnPoint))
+                return false;
+            IsTargeting = false;
+            return true;
+        }
         if (m_PreparationFailed)
             return false;
         if (m_PreparedDuck == null)
@@ -133,6 +142,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
             m_PreparedRoot = null;
             DestroyOwnedObject(root.gameObject);
             duck.SetActive(true);
+            IsTargeting = false;
             return true;
         }
         catch (System.Exception exception)
@@ -144,8 +154,15 @@ public sealed class MicroDuckSpawner : MonoBehaviour
 
     public void PlaceOrNavigate(Vector3 spawnPoint, Vector3 spawnNormal)
     {
-        if (!TryPlaceOrNavigate(spawnPoint, spawnNormal))
+        if (IsTargeting && !TryPlaceOrNavigate(spawnPoint, spawnNormal))
             Debug.LogWarning("Could not place MicroDuck or set its destination.", this);
+    }
+
+    public void BeginTargeting()
+    {
+        if (m_LiveNavigator != null)
+            m_LiveNavigator.Cancel();
+        IsTargeting = true;
     }
 
     public void SetFollowing(bool follow)
@@ -160,11 +177,15 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         }
         Camera headsetCamera = cameraToFace;
         if (headsetCamera != null)
+        {
             m_LiveNavigator.Follow(headsetCamera.transform);
+            IsTargeting = false;
+        }
     }
 
     public void ResetRobot()
     {
+        BeginTargeting();
         if (m_LiveDuck == null)
             return;
 

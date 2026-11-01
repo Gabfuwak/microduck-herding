@@ -10,9 +10,10 @@ Open Assets/Scenes/MainScene.unity. Desktop controls: mouse look, WASD/arrow
 movement, Space/Shift up/down and left-click placement. Desktop scripts and the
 AR simulation environment live in Assets/Desktop; robot code/assets live in
 Assets/Robots/MicroDuck. For Quest, install Unity's Android Build Support module,
-select the Android build profile and build MainScene for ARM64. Use the existing
-XR placement gesture: first use places one duck; later uses set its walking
-destination. A new destination replaces the previous one. Reset despawns it.
+select the Android build profile and build MainScene for ARM64. Initial placement
+starts in aiming mode. Use Go there to aim again: point at a horizontal room plane
+with the hand opposite the menu, then pinch to spawn the duck or set its destination.
+Each accepted target ends aiming. Reset despawns the duck and re-enters aiming.
 Joystick input cancels navigation: left stick forward/back (up to +/-0.4 m/s) and
 sideways (+/-0.3 m/s), right stick horizontal turns (+/-1 rad/s), all duck-relative.
 Release to stand. Manual driving requires both controllers tracked and neutral
@@ -28,8 +29,8 @@ Hand UI lives in Assets/UI/MicroDuck and is included in MainScene:
 - MicroDuckMicrophone.prefab is a circular, hand-locked mute toggle.
   MicroDuckMicrophoneView swaps its normal/crossed-out icon and tint.
 - MicroDuckMainMenu.prefab is the viewer-facing Settings panel beside the palm.
-  It uses a standard Reset Button and Left/Right ToggleGroup; MicroDuckSwitchView
-  updates the Planes and Follow me toggles' track colour and thumb position.
+  It uses standard Go there and Reset Buttons and a Left/Right ToggleGroup;
+  MicroDuckSwitchView updates the Planes and Follow me toggles' visuals.
 Both canvases use TrackedDeviceGraphicRaycaster with the existing XR input rig.
 Placement, size, follow behaviour and hit-area padding are configured in the
 prefabs. Both view scripts update on value changes and reveal, not every frame.
@@ -38,19 +39,32 @@ MicroDuckHandMenuControls lives on the always-active menu root. MainScene assign
 its spawner and ARPlaneManager references; the prefab assigns its controls/followers.
 It binds UI and plane-added events and reflects follow state each LateUpdate,
 using the spawner's cached navigator rather than per-frame component searches:
+- Go there is available before and after spawning. It cancels the current route
+  or Follow me immediately, then arms one shared spawn-or-navigate request.
+  Enabling Follow me exits aiming instead.
 - Reset robot despawns the live duck and returns to the initial placement flow.
   Its simulation resources are released; the existing preload path prepares a new
-  hidden duck. The next placement gesture chooses its position. Before placement,
-  Reset does nothing.
+  hidden duck. The next placement gesture chooses its position.
 - Follow me is disabled before placement. Enabling it follows the headset with
-  a 45 cm stand-off; disabling it cancels following. Joystick input, an accepted
-  surface destination or Reset clears the follow state and switches the toggle off.
+  a 45 cm stand-off; disabling it cancels following. Joystick input, Go there
+  or Reset clears the follow state and switches the toggle off.
   Hiding the hand menu does not stop following.
 - Planes changes Renderer.forceRenderingOff on existing and newly detected AR
   planes. Tracking, mesh generation, placement raycasts and MuJoCo collisions stay
   active; it does not hide the physical room or desktop simulation environment.
 - Left/Right moves both UI followers to the selected hand, with mirrored offsets.
 Toggle values survive hiding/revealing the menu instance, not app restarts.
+
+MicroDuckTargeting is attached beside the spawner on the MR rig. It caches the
+stock NearFarInteractors once, uses their native aim origin/select state and
+casts against room colliders (AR planes are excluded from XRI's grab-target mask).
+A green ring previews horizontal plane hits; UI, grabbed/hovered objects, walls
+and untracked/removed planes block confirmation. The ring indicates a surface,
+not a guaranteed complete navigation route. A fresh pinch confirms once; held
+menu presses must be released first. No hand-joint gesture recognizer is added.
+Existing direct surface touches use the same gated request. Outside aiming,
+neither touches nor pinches retarget the duck. Desktop clicks explicitly begin
+and confirm the same action, retaining the desktop mouse workflow.
 
 Navigation reuses Andre's planner/follower from commit
 b665b088809730077afd4ffc91884cf65df2e15f, without its desktop host or robotd.
@@ -64,8 +78,8 @@ heading/lateral drift from the actual simulated trunk and feet, and returns
 robot-relative velocity requests to MicroDuckJoystick, the command owner.
 MuJoCo/the existing policies still move and balance the robot, not a NavMeshAgent.
 The target circle/route is green for a complete route and amber when no route is
-available. Invalid surface points keep the previous goal. Disconnected surfaces
-do not become jumps; a walkable but unreachable goal stays pending and replans.
+available. Rejected points leave aiming active. Disconnected surfaces do not
+become jumps; a walkable but unreachable goal stays pending and replans.
 The Follow me toggle only acts on an already-placed duck. It keeps a follow goal
 active after arrival: the approach point is 45 cm horizontally from the headset's
 XZ centre, on the duck's current walking level. Camera rotation does not affect it.
@@ -73,8 +87,8 @@ Headset movement updates the target and periodically replans on the existing
 NavMesh, without resetting command smoothing or rebuilding the room. Invalid
 surface projection, lost tracking or an incomplete route stops movement requests;
 following stays active and can resume. Ordinary navigation's recovery bursts are
-not used while following. A new accepted gesture destination, stick input or Reset
-cancels following. The microphone remains a visual-only toggle: no capture,
+not used while following. Go there, stick input or Reset cancels following.
+The microphone remains a visual-only toggle: no capture,
 permissions, recognition service or credentials are used.
 The radius constrains requested movement, not the robot's physical footprint:
 policy lag/overshoot and headset-vs-feet position mean it is not a safety barrier.
@@ -94,9 +108,16 @@ User-run headset check:
 - Push the right stick forward and release, including after switching between
   hands and controllers: no teleport ray should appear. Check right-stick turning,
   left-stick movement, controller UI clicks and placement still work.
-- After the room planes appear, place the duck and tap/point farther along the
-  same surface. Confirm a target circle/route appears and the duck walks toward
-  it, including hands-only tracking. Retarget it while walking.
+- Before spawning, click Go there and aim at the floor: the green ring should
+  track the opposite hand's aim. Pinch once to spawn; the preview should disappear.
+- Enable Follow me, click Go there: following must switch off before confirmation.
+  Aim elsewhere and pinch: the existing duck walks there, without spawning another.
+  Further pinches must not retarget until Go there is clicked again.
+- Hold the pinch used to click Go there, move off the menu, then release: no
+  destination should be accepted until a fresh pinch. Check both menu handedness
+  settings, hands-only tracking and controller select input.
+- Aim at UI, walls and empty space: no preview or confirmation. Hide Planes and
+  check floor targeting still works. Reset should restore the initial aiming mode.
 - Try a route around an obstacle, then a disconnected surface/table: the latter
   should have no complete route, not drive directly off an edge toward the goal.
 - Move either stick while navigating: the route/circle should clear and manual
@@ -110,7 +131,7 @@ User-run headset check:
   without walking: the destination must not move with camera facing.
 - Disable Follow me: movement requests should stop. Re-enable, hide/reveal the
   hand menu, and check that following and the switch's colour/thumb stay in sync.
-- Cancel following with a new valid surface destination, either stick, and Reset:
+- Cancel following with Go there, either stick, and Reset:
   the toggle should turn off too. Reset disables it until the next placement.
   Test an unreachable room area/table edge: it should wait, not chase an old
   headset goal. Opening the system menu must stop movement; returning resumes

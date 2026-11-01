@@ -1881,6 +1881,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3918692831784067096}
   - component: {fileID: 3339367952642848919}
+  - component: {fileID: 3339367952642848920}
   m_Layer: 0
   m_Name: Object Spawner
   m_TagString: Untagged
@@ -1917,6 +1918,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_CameraToFace: {fileID: 6484816944661230508}
   m_ObjectPrefab: {fileID: 2774184874629296922, guid: 3854676da5ce52a7e8b6f5c64e753b29, type: 3}
+--- !u!114 &3339367952642848920
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6383841202730774034}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5104fe098a9c469a8d9cddc063273a07, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!1 &6660900155203182598
 GameObject:
   m_ObjectHideFlags: 0
