@@ -8,13 +8,19 @@ using UnityEngine.InputSystem.XR;
 public sealed class MicroDuckJoystick : MonoBehaviour
 {
     MicroDuckPolicyController controller;
+    MicroDuckNavigator navigator;
+    Vector3 manualCommand;
     Vector2Control leftStick;
     Vector2Control rightStick;
     bool focused = true;
     bool paused;
     bool requireNeutral = true;
 
-    void Awake() => controller = GetComponent<MicroDuckPolicyController>();
+    void Awake()
+    {
+        controller = GetComponent<MicroDuckPolicyController>();
+        navigator = GetComponent<MicroDuckNavigator>();
+    }
 
     void OnEnable() => Stop();
 
@@ -30,7 +36,7 @@ public sealed class MicroDuckJoystick : MonoBehaviour
         if (!focused || paused || leftStick == null || rightStick == null ||
             !left.enabled || !right.enabled || !left.isTracked.isPressed || !right.isTracked.isPressed)
         {
-            Stop();
+            ClearManualInput();
             return;
         }
 
@@ -47,7 +53,19 @@ public sealed class MicroDuckJoystick : MonoBehaviour
                 return;
             requireNeutral = false;
         }
-        controller.SetVelocityCommand(forward, sideways, yaw);
+        manualCommand = new Vector3(forward, sideways, yaw);
+        if (manualCommand != Vector3.zero)
+            navigator?.Cancel();
+    }
+
+    void FixedUpdate()
+    {
+        var command = !focused || paused
+            ? Vector3.zero
+            : navigator != null && navigator.HasDestination
+                ? navigator.Tick(Time.fixedDeltaTime)
+                : manualCommand;
+        controller.SetVelocityCommand(command.x, command.y, command.z);
     }
 
     static float Axis(float value) =>
@@ -55,9 +73,16 @@ public sealed class MicroDuckJoystick : MonoBehaviour
             ? 0f
             : Mathf.Clamp(value, -1f, 1f);
 
-    void Stop()
+    void ClearManualInput()
     {
         requireNeutral = true;
+        manualCommand = Vector3.zero;
+    }
+
+    void Stop()
+    {
+        ClearManualInput();
+        navigator?.Suspend();
         if (controller != null)
             controller.SetVelocityCommand(0f, 0f, 0f);
     }
@@ -67,6 +92,8 @@ public sealed class MicroDuckJoystick : MonoBehaviour
         focused = hasFocus;
         if (!hasFocus)
             Stop();
+        else if (!paused)
+            navigator?.Resume();
     }
 
     void OnApplicationPause(bool isPaused)
@@ -74,7 +101,13 @@ public sealed class MicroDuckJoystick : MonoBehaviour
         paused = isPaused;
         if (isPaused)
             Stop();
+        else if (focused)
+            navigator?.Resume();
     }
 
-    void OnDisable() => Stop();
+    void OnDisable()
+    {
+        navigator?.Cancel();
+        Stop();
+    }
 }

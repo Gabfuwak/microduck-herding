@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using UnityEngine.AI;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.IO;
@@ -79,6 +81,8 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     MujocoLib.mjData_* data;
     int rootBodyId = -1;
     int rootQposAddress = -1;
+    int leftFootSiteId = -1;
+    int rightFootSiteId = -1;
     int gyroAddress = -1;
     int substepsSincePolicy;
     bool initialized;
@@ -136,6 +140,31 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         requestedCommand = new Vector3(forward, left, yawRate);
         commandUpdatedAt = Time.realtimeSinceStartupAsDouble;
     }
+
+    public Transform Trunk { get; private set; }
+
+    public Vector3 FootMidpoint
+    {
+        get
+        {
+            if (!initialized || data == null || leftFootSiteId < 0 || rightFootSiteId < 0)
+                throw new InvalidOperationException("MicroDuck foot sites are not resolved.");
+            var left = data->site_xpos + leftFootSiteId * 3;
+            var right = data->site_xpos + rightFootSiteId * 3;
+            var midpoint = new Vector3((float)(-(left[1] + right[1]) * 0.5),
+                (float)((left[2] + right[2]) * 0.5), (float)((left[0] + right[0]) * 0.5));
+            return transform.TransformPoint(midpoint);
+        }
+    }
+
+
+    internal void GetNavigationBuildSources(List<NavMeshBuildSource> output, out Bounds bounds)
+    {
+        if (!initialized || surfaces == null)
+            throw new InvalidOperationException("MicroDuck surfaces are not initialized.");
+        surfaces.GetNavigationBuildSources(output, out bounds);
+    }
+
 
     void OnEnable()
     {
@@ -352,6 +381,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         gyroAddress = model->sensor_adr[gyroId];
 
         bodyIds = new int[bodies.Length];
+        Trunk = null;
         for (var i = 0; i < bodies.Length; i++)
         {
             if (string.IsNullOrEmpty(bodies[i].name) || bodies[i].transform == null)
@@ -362,7 +392,16 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             if (i > 0 && bodyId <= bodyIds[i - 1])
                 throw new InvalidOperationException("MicroDuck visual body transforms must be ordered parent-first.");
             bodyIds[i] = bodyId;
+            if (bodyId == rootBodyId)
+                Trunk = bodies[i].transform;
         }
+        if (Trunk == null)
+            throw new InvalidOperationException("The native trunk body requires a matching visual transform.");
+        var siteObject = (int)MujocoLib.mjtObj.mjOBJ_SITE;
+        leftFootSiteId = MujocoLib.mj_name2id(model, siteObject, "left_foot");
+        rightFootSiteId = MujocoLib.mj_name2id(model, siteObject, "right_foot");
+        if (leftFootSiteId < 0 || rightFootSiteId < 0)
+            throw new InvalidOperationException("MicroDuck requires native left_foot and right_foot sites.");
     }
 
     unsafe void InitializeNativeState()
@@ -658,7 +697,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         rootBodyId = -1;
         rootQposAddress = -1;
         gyroAddress = -1;
+        leftFootSiteId = -1;
+        rightFootSiteId = -1;
         bodyIds = null;
+        Trunk = null;
         substepsSincePolicy = 0;
     }
 

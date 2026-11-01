@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using Mujoco;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
 using Unity.Collections;
@@ -521,6 +522,55 @@ internal sealed class MicroDuckSurfaces : IDisposable
     }
 
     static void AppendFloat(StringBuilder output, float value) => output.Append(value.ToString("R", CultureInfo.InvariantCulture));
+    internal void GetNavigationBuildSources(List<NavMeshBuildSource> output, out Bounds bounds)
+    {
+        if (disposed)
+            throw new ObjectDisposedException(nameof(MicroDuckSurfaces));
+        output.Clear();
+        var hasBounds = false;
+        bounds = default;
+        for (var i = 0; i < surfaces.Count; i++)
+        {
+            var surface = surfaces[i];
+            var collider = surface.collider;
+            if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy ||
+                collider.isTrigger || (collider.gameObject.layer != ARLayer && collider.gameObject.layer != SimulationLayer) ||
+                (collider.attachedRigidbody != null && !collider.attachedRigidbody.isKinematic))
+                continue;
+
+            var source = new NavMeshBuildSource { area = 0 };
+            if (surface.box && collider is BoxCollider box)
+            {
+                source.shape = NavMeshBuildSourceShape.Box;
+                source.transform = collider.transform.localToWorldMatrix * Matrix4x4.Translate(box.center);
+                source.size = box.size;
+                var boxBounds = box.bounds;
+                if (!hasBounds) { bounds = boxBounds; hasBounds = true; }
+                else bounds.Encapsulate(boxBounds);
+            }
+            else if (collider is MeshCollider meshCollider && meshCollider.sharedMesh != null)
+            {
+                source.shape = NavMeshBuildSourceShape.Mesh;
+                source.sourceObject = meshCollider.sharedMesh;
+                source.transform = collider.transform.localToWorldMatrix;
+                source.size = Vector3.one;
+                var meshBounds = meshCollider.bounds;
+                if (!hasBounds) { bounds = meshBounds; hasBounds = true; }
+                else bounds.Encapsulate(meshBounds);
+            }
+            else
+                continue;
+            output.Add(source);
+        }
+
+        if (hasBounds)
+        {
+            bounds.Expand(1f);
+            return;
+        }
+        bounds = new Bounds(anchor.position, Vector3.one);
+    }
+
 
     static void InsertBeforeClosing(StringBuilder xml, string closingTag, StringBuilder addition)
     {

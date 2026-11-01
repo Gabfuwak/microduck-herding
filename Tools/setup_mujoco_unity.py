@@ -11,11 +11,12 @@ movement, Space/Shift up/down and left-click placement. Desktop scripts and the
 AR simulation environment live in Assets/Desktop; robot code/assets live in
 Assets/Robots/MicroDuck. For Quest, install Unity's Android Build Support module,
 select the Android build profile and build MainScene for ARM64. Use the existing
-XR placement gesture; one duck is allowed at a time. The duck waits for joystick
-input: left stick forward/back (up to +/-0.4 m/s) and sideways (+/-0.3 m/s), right
-stick horizontal turns (+/-1 rad/s), all relative to the duck. Release to stand.
-Both controllers must be tracked; centre the sticks after spawning, reconnecting,
-or returning from focus/pause before driving. Hands-only tracking leaves it standing.
+XR placement gesture: first use places one duck; later uses set its walking
+destination. A new destination replaces the previous one. Reset despawns it.
+Joystick input cancels navigation: left stick forward/back (up to +/-0.4 m/s) and
+sideways (+/-0.3 m/s), right stick horizontal turns (+/-1 rad/s), all duck-relative.
+Release to stand. Manual driving requires both controllers tracked and neutral
+sticks after spawn/reconnect/focus/pause. Navigation also works with hands only.
 The XR Origin Hands rig variant disconnects both controllers' teleport mode/cancel
 actions. Right-stick forward no longer starts the template's red invalid-teleport
 ray or switches away from normal UI pointing. Robot joystick mappings are unchanged.
@@ -47,6 +48,22 @@ It binds UI and plane-added events, without per-frame searches:
 The microphone remains visual-only: no capture, speech or expansion is connected.
 Toggle values survive hiding/revealing the menu instance, not app restarts.
 
+Navigation reuses Andre's planner/follower from commit
+b665b088809730077afd4ffc91884cf65df2e15f, without its desktop host or robotd.
+MicroDuckNavigator snapshots the same valid box/mesh surfaces as MuJoCo when the
+duck is placed, then bakes one NavMesh asynchronously. Place the duck after the
+saved room planes have appeared. Walking requests received during the bake wait
+for it; head motion, plane visibility and destination changes do not rebuild it.
+Reset/replacement takes a fresh snapshot if room geometry was recaptured or moved.
+Route queries replan periodically on that fixed NavMesh. The follower corrects
+heading/lateral drift from the actual simulated trunk and feet, and returns
+robot-relative velocity requests to MicroDuckJoystick, the command owner.
+MuJoCo/the existing policies still move and balance the robot, not a NavMeshAgent.
+The target circle/route is green for a complete route and amber when no route is
+available. Invalid surface points keep the previous goal. Disconnected surfaces
+do not become jumps; a walkable but unreachable goal stays pending and replans.
+This does not add speech, new policies, stand-up recovery or dynamic room mapping.
+
 User-run headset check:
 - Reset before placement, then after walking/falling: the duck should disappear
   and stay absent until a new placement gesture. Place it elsewhere and repeat;
@@ -59,6 +76,16 @@ User-run headset check:
 - Push the right stick forward and release, including after switching between
   hands and controllers: no teleport ray should appear. Check right-stick turning,
   left-stick movement, controller UI clicks and placement still work.
+- After the room planes appear, place the duck and tap/point farther along the
+  same surface. Confirm a target circle/route appears and the duck walks toward
+  it, including hands-only tracking. Retarget it while walking.
+- Try a route around an obstacle, then a disconnected surface/table: the latter
+  should have no complete route, not drive directly off an edge toward the goal.
+- Move either stick while navigating: the route/circle should clear and manual
+  driving should take over. Release to stand, then select another destination.
+- Open a system menu while walking: movement requests should stop; returning
+  should resume toward the goal. Reset should remove duck, route and target even
+  if a bake is still pending; place again to start a fresh navigation instance.
 Do not launch Unity builds or automated tests on the user's behalf.
 
 Share source through Git: Assets, Packages, ProjectSettings, Tools and the source
@@ -94,15 +121,17 @@ tests for source-model pruning can be run with:
 
 Runtime: MicroDuckSpawner prepares one hidden duck before placement, warming the
 native world and both CPU policies; placement reuses resources and resets state.
-Physics runs at 200 Hz and policy inference at 50 Hz. MicroDuckJoystick replaces
-the automatic walk demo. It reads raw OpenXR sticks through the Input System,
-using the official per-axis 0.1 dead zone without rescaling. The policy controller
-smooths commands with alpha 0.2 at 50 Hz and selects standing at command magnitude
+Physics runs at 200 Hz and policy inference at 50 Hz. MicroDuckJoystick owns
+manual/navigation velocity selection before each physics update. It reads raw
+OpenXR sticks with the official per-axis 0.1 dead zone, without rescaling.
+The policy controller smooths commands with alpha 0.2 at 50 Hz and stands at magnitude
 <=0.05. SetVelocityCommand must be refreshed continuously: requests expire after
-0.5 real seconds. Release, tracking loss, focus/pause loss and disabling joystick
-input request zero velocity without disabling physical balancing. Placement clears
-command history; every newly placed duck requires neutral sticks before driving.
-These are velocity requests, not guaranteed motion or drift correction.
+0.5 real seconds. Manual release/tracking loss clears manual input; an active
+navigation goal continues without controllers. Focus/pause loss stops requests
+without disabling physical balancing and retains the goal for resume. Disabling
+the joystick cancels navigation. Placement clears command history; every newly
+placed duck requires neutral sticks before manual driving. These are velocity
+requests, not guaranteed motion; navigation adds pose feedback for drift correction.
 The current checked-in walking policy barely translates under pure lateral requests
 in the native smoke run; forward-plus-sideways does move diagonally. Do not treat
 the command limits as achieved speeds or guaranteed strafing.
@@ -111,9 +140,9 @@ and https://github.com/pollen-robotics/microduck/blob/main/robotd/src/control.rs
 Native body poses drive CAD through ROS-to-Unity (-y,z,x); the spawn anchor must have unit world
 scale. MicroDuckSurfaces captures static/kinematic boxes and meshes on AR and
 simulation layers 7/30; there is no implicit floor. Shape/add/remove rebuilds
-preserve robot integration state and policy history. Dynamic PhysX interaction,
-navigation and stand-up recovery are not implemented. Opt-in performance capture
-records bounded frame/operation percentiles and rebuild reasons.
+preserve robot integration state and policy history. Dynamic PhysX interaction
+and stand-up recovery are not implemented. Opt-in performance capture records
+bounded frame/operation percentiles and rebuild reasons.
 
 Visual source: https://github.com/pollen-robotics/microduck_rl
 Hardware: https://github.com/pollen-robotics/microduck (Creative Commons BY-SA-NC,

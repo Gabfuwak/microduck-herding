@@ -38,7 +38,7 @@ public sealed class DesktopSurfacePlacement : MonoBehaviour
             return;
 
         objectSpawner.cameraToFace = placementCamera;
-        objectSpawner.TrySpawnObject(hit.point, hit.normal);
+        objectSpawner.TryPlaceOrNavigate(hit.point, hit.normal);
     }
 
 

@@ -93,10 +93,10 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         }
     }
 
-    public bool TrySpawnObject(Vector3 spawnPoint, Vector3 spawnNormal)
+    public bool TryPlaceOrNavigate(Vector3 spawnPoint, Vector3 spawnNormal)
     {
         if (m_LiveDuck != null)
-            return false;
+            return m_LiveDuck.GetComponent<MicroDuckNavigator>().SetDestination(spawnPoint);
         if (m_PreparationFailed)
             return false;
         if (m_PreparedDuck == null)
@@ -117,6 +117,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         {
             duck.transform.SetPositionAndRotation(spawnPoint, rotation);
             m_PreparedController.PlacePreparedSimulation();
+            duck.AddComponent<MicroDuckNavigator>().Initialize(m_PreparedController);
 
             Transform root = m_PreparedRoot.transform;
             duck.transform.SetParent(null, true);
@@ -135,10 +136,10 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         }
     }
 
-    public void SpawnObject(Vector3 spawnPoint, Vector3 spawnNormal)
+    public void PlaceOrNavigate(Vector3 spawnPoint, Vector3 spawnNormal)
     {
-        if (!TrySpawnObject(spawnPoint, spawnNormal))
-            Debug.LogWarning("Could not spawn MicroDuck.", this);
+        if (!TryPlaceOrNavigate(spawnPoint, spawnNormal))
+            Debug.LogWarning("Could not place MicroDuck or set its destination.", this);
     }
 
     public void ResetRobot()
