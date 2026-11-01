@@ -20,14 +20,33 @@ controller and navigator. The desktop camera and boxes are confined to the trial
 
 ## Quest
 
-Use the existing Android configuration and `Assets/Scenes/MainScene.unity`.
-Build with **IL2CPP / ARM64**. The Pollen controller, MuJoCo and ONNX Runtime plugins
-are selected automatically for Android; Linux plugin binaries are excluded.
-Build and Run from Unity's Android platform. The development APK produced during
-integration is `Builds/Android/MicroDuck.apk` (build output is not checked into Git).
-Controller and policy changes require a normal app rebuild, with no companion
-service or network connection. Headset input and performance must be tested on
-an actual Quest; Linux simulation does not emulate those features.
+For the shared integration, clone this branch directly:
+
+```sh
+git clone --branch codex/quest-robotd-integration https://github.com/Gabfuwak/microduck-herding.git
+```
+
+1. Open the project in **Unity Hub → Unity 6000.6.3f1**, with **Android Build
+   Support**, its **SDK & NDK Tools**, and **OpenJDK** installed.
+2. Open **File → Build Profiles**, select the included **Quest** profile, and
+   click **Switch Profile**. Wait for Unity's Android import to finish.
+3. Connect the Quest by USB with Developer Mode enabled and accept its USB
+   debugging prompt. Select the headset as **Run Device** in Build Profiles.
+4. Click **Build And Run**. For the first output location, choose
+   `Builds/Android/MicroDuck.apk`. **Build** also produces an APK without a connected
+   headset.
+
+The profile builds `Assets/Scenes/MainScene.unity` and inherits the project's
+**IL2CPP / ARM64**, OpenXR and existing Quest input configuration. Native libraries
+and policy models are already tracked and packaged automatically; using the app
+needs no Rust, Python, robot daemon, or separate model download. Build output is
+local and is not checked into Git. Later code changes need only a normal rebuild.
+
+Complete the room scan before placing the duck. First placement uses the currently
+scanned surfaces for navigation; if you rescan or change the room layout, use the
+hand menu's **Reset robot** action, then place the duck again. Headset input, room
+capture and performance still require testing on a real Quest; the Linux trial does
+not emulate them.
 
 ## Code boundaries
 
@@ -49,6 +68,19 @@ flowchart TD
     Host -->|Measured feet and recovery state| Nav
     Host --> Visuals[Unity visuals]
 ```
+
+The desktop trial and Quest share these entry points:
+
+| Change | Location |
+| --- | --- |
+| Placement and destinations | [MicroDuckSpawner](Assets/Robots/MicroDuck/MicroDuckSpawner.cs): call `TryPlaceOrNavigate(point, normal)` from code; keep scene callbacks using `PlaceOrNavigate` and `ResetRobot` |
+| Routes, steering and permitted drops | [MicroDuckNavigator.cs](Assets/Robots/MicroDuck/MicroDuckNavigator.cs) |
+| Physics, measured sensors and visual poses | [MicroDuckPolicyController.cs](Assets/Robots/MicroDuck/MicroDuckPolicyController.cs) and [MicroDuckSurfaces.cs](Assets/Robots/MicroDuck/MicroDuckSurfaces.cs) |
+| Pollen inference and recovery | Packaged native core through [MicroDuckPollenControl.cs](Assets/Robots/MicroDuck/MicroDuckPollenControl.cs); [rebuild both native targets](Tools/PollenControl/README.md) only when changing the core |
+
+Changes to the shared C# components need only the normal Unity rebuild on either
+platform. The desktop camera, test boxes and accelerated time belong to the trial
+scene and are excluded from the Quest profile.
 
 Unity's agent advises a velocity and route; it never moves the physical duck.
 The adapter limits command acceleration and turning rate. Actual measured motion

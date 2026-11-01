@@ -199,8 +199,7 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         Destination = hit.position;
         HasDestination = true;
         previousCommand = Vector3.zero;
-        bestDistance = float.PositiveInfinity;
-        progressAt = Time.time;
+        ResetProgress();
         nextPlan = 0f;
         if (!crossingDrop)
         {
@@ -252,38 +251,7 @@ public sealed class MicroDuckNavigator : MonoBehaviour
         var verticalSpeed = (feet.y - previousFeet.y) / Mathf.Max(dt, 0.001f);
         previousFeet = feet;
         var fallen = controller.IsFallen;
-        if (fallen && !previousFallen)
-        {
-            recovering = true;
-            quietUntil = Time.time + 3f;
-            progressAt = Time.time;
-            previousCommand = Vector3.zero;
-            if (AgentReady) agent.isStopped = true;
-        }
-        previousFallen = fallen;
-        if (controller.RecoveryActive || !controller.ControlReady)
-        {
-            recovering = true;
-            quietUntil = Time.time + 3f;
-            progressAt = Time.time;
-            if (AgentReady) agent.isStopped = true;
-            previousCommand = Vector3.zero;
-            Status = controller.BehaviorState + " — goal kept";
-            return LastCommand;
-        }
-        if (recovering && (fallen || controller.Uprightness < 0.85f) && Time.time < quietUntil)
-        {
-            previousCommand = Vector3.zero;
-            Status = "Getting up — goal kept";
-            return LastCommand;
-        }
-        if (recovering)
-        {
-            recovering = false;
-            progressAt = Time.time;
-            bestDistance = float.PositiveInfinity;
-            if (!crossingDrop) BindAgent(feet);
-        }
+        if (UpdateRecovery(feet, fallen)) return LastCommand;
         if (crossingDrop) return TickDrop(feet, verticalSpeed, dt);
         if (!AgentReady)
         {
@@ -349,14 +317,55 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             // Retry Unity's route from measured progress. Do not cancel a goal
             // merely because contact or recovery prevented the requested motion.
             RequestPath();
-            progressAt = Time.time;
-            bestDistance = float.PositiveInfinity;
+            ResetProgress();
         }
         Status = "Walking to target";
         SetVisualColor(RouteColor);
         LastCommand = VelocityCommand(agent.desiredVelocity, agent.steeringTarget - feet, dt);
         DrawRoute(feet);
         return LastCommand;
+    }
+
+    void ResetProgress()
+    {
+        progressAt = Time.time;
+        bestDistance = float.PositiveInfinity;
+    }
+
+    bool UpdateRecovery(Vector3 feet, bool fallen)
+    {
+        if (fallen && !previousFallen)
+        {
+            recovering = true;
+            quietUntil = Time.time + 3f;
+            progressAt = Time.time;
+            previousCommand = Vector3.zero;
+            if (AgentReady) agent.isStopped = true;
+        }
+        previousFallen = fallen;
+        if (controller.RecoveryActive || !controller.ControlReady)
+        {
+            recovering = true;
+            quietUntil = Time.time + 3f;
+            progressAt = Time.time;
+            if (AgentReady) agent.isStopped = true;
+            previousCommand = Vector3.zero;
+            Status = controller.BehaviorState + " — goal kept";
+            return true;
+        }
+        if (recovering && (fallen || controller.Uprightness < 0.85f) && Time.time < quietUntil)
+        {
+            previousCommand = Vector3.zero;
+            Status = "Getting up — goal kept";
+            return true;
+        }
+        if (recovering)
+        {
+            recovering = false;
+            ResetProgress();
+            if (!crossingDrop) BindAgent(feet);
+        }
+        return false;
     }
 
     Vector3 TickDrop(Vector3 feet, float verticalSpeed, float dt)
@@ -375,8 +384,7 @@ public sealed class MicroDuckNavigator : MonoBehaviour
                 crossingDrop = false;
                 BindAgent(feet);
                 RequestPath();
-                progressAt = Time.time;
-                bestDistance = float.PositiveInfinity;
+                ResetProgress();
                 previousCommand = Vector3.zero;
                 Status = "Landed — resuming route";
             }
@@ -396,8 +404,7 @@ public sealed class MicroDuckNavigator : MonoBehaviour
             {
                 crossingDrop = false;
                 RequestPath();
-                progressAt = Time.time;
-                bestDistance = float.PositiveInfinity;
+                ResetProgress();
                 Status = "Retrying from landing surface — goal kept";
                 return Vector3.zero;
             }

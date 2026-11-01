@@ -110,10 +110,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
         for (var i = 0; i < found.Count; i++)
         {
             var collider = found[i];
-            var layer = collider.gameObject.layer;
-            if (IsDuckCollider(collider) || !collider.enabled || !collider.gameObject.activeInHierarchy ||
-                collider.isTrigger || (collider.attachedRigidbody != null && !collider.attachedRigidbody.isKinematic) ||
-                (layer != ARLayer && layer != SimulationLayer))
+            if (IsDuckCollider(collider) || !IsActiveSurface(collider))
             {
                 if (RemoveSurface(collider)) changed |= Change.Removed;
                 continue;
@@ -185,6 +182,12 @@ internal sealed class MicroDuckSurfaces : IDisposable
     }
 
     bool IsDuckCollider(Collider collider) => collider.transform == anchor || collider.transform.IsChildOf(anchor);
+
+    // Room surfaces are static or kinematic colliders in the AR/simulation layers.
+    static bool IsActiveSurface(Collider collider) =>
+        collider != null && collider.enabled && collider.gameObject.activeInHierarchy && !collider.isTrigger &&
+        (collider.attachedRigidbody == null || collider.attachedRigidbody.isKinematic) &&
+        (collider.gameObject.layer == ARLayer || collider.gameObject.layer == SimulationLayer);
 
     Surface FindSurface(Collider collider) =>
         surfacesByCollider.TryGetValue(collider, out var surface) ? surface : null;
@@ -399,14 +402,19 @@ internal sealed class MicroDuckSurfaces : IDisposable
         return xml.ToString();
     }
 
-    static void AppendBox(StringBuilder assets, StringBuilder geoms, Surface surface, ref int id)
+    void AppendBox(StringBuilder assets, StringBuilder geoms, Surface surface, ref int id)
     {
+        vertexScratch.Clear();
         var center = Vector3.zero;
         for (var i = 0; i < surface.vertices.Count; i++)
-            center += ToNative(surface.vertices[i]);
+        {
+            var vertex = ToNative(surface.vertices[i]);
+            vertexScratch.Add(vertex);
+            center += vertex;
+        }
         center /= surface.vertices.Count;
         var name = "microduck_surface_" + id++;
-        AppendMeshAsset(assets, name, surface.vertices, surface.triangles, center);
+        AppendNativeMeshAsset(assets, name, vertexScratch, surface.triangles, center);
         AppendGeom(geoms, name, center);
     }
 
@@ -476,19 +484,6 @@ internal sealed class MicroDuckSurfaces : IDisposable
         return updated;
     }
 
-    static void AppendMeshAsset(StringBuilder output, string name, IReadOnlyList<Vector3> vertices,
-        IReadOnlyList<int> triangles, Vector3 center)
-    {
-        output.Append("    <mesh name=\"").Append(name).Append("\" vertex=\"");
-        for (var i = 0; i < vertices.Count; i++)
-        {
-            if (i != 0) output.Append(' ');
-            var p = ToNative(vertices[i]) - center;
-            AppendFloat(output, p.x); output.Append(' '); AppendFloat(output, p.y); output.Append(' '); AppendFloat(output, p.z);
-        }
-        AppendMeshFaces(output, triangles);
-    }
-
     static void AppendNativeMeshAsset(StringBuilder output, string name, IReadOnlyList<Vector3> vertices,
         IReadOnlyList<int> triangles, Vector3 center)
     {
@@ -533,9 +528,7 @@ internal sealed class MicroDuckSurfaces : IDisposable
         {
             var surface = surfaces[i];
             var collider = surface.collider;
-            if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy ||
-                collider.isTrigger || (collider.gameObject.layer != ARLayer && collider.gameObject.layer != SimulationLayer) ||
-                (collider.attachedRigidbody != null && !collider.attachedRigidbody.isKinematic))
+            if (!IsActiveSurface(collider))
                 continue;
 
             var source = new NavMeshBuildSource { area = 0 };
@@ -544,9 +537,6 @@ internal sealed class MicroDuckSurfaces : IDisposable
                 source.shape = NavMeshBuildSourceShape.Box;
                 source.transform = collider.transform.localToWorldMatrix * Matrix4x4.Translate(box.center);
                 source.size = box.size;
-                var boxBounds = box.bounds;
-                if (!hasBounds) { bounds = boxBounds; hasBounds = true; }
-                else bounds.Encapsulate(boxBounds);
             }
             else if (collider is MeshCollider meshCollider && meshCollider.sharedMesh != null)
             {
@@ -554,12 +544,12 @@ internal sealed class MicroDuckSurfaces : IDisposable
                 source.sourceObject = meshCollider.sharedMesh;
                 source.transform = collider.transform.localToWorldMatrix;
                 source.size = Vector3.one;
-                var meshBounds = meshCollider.bounds;
-                if (!hasBounds) { bounds = meshBounds; hasBounds = true; }
-                else bounds.Encapsulate(meshBounds);
             }
             else
                 continue;
+            var surfaceBounds = collider.bounds;
+            if (!hasBounds) { bounds = surfaceBounds; hasBounds = true; }
+            else bounds.Encapsulate(surfaceBounds);
             output.Add(source);
         }
 

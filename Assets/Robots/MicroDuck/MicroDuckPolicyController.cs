@@ -42,6 +42,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     const double PhysicsPeriod = 0.005;
     const int SubstepsPerPolicy = 4;
     const double CommandTimeout = 0.5;
+    const double SurfaceRefreshPeriod = 0.25;
 
     static readonly ProfilerMarker SurfaceScanMarker = new("MicroDuck.SurfaceScan");
     static readonly ProfilerMarker SceneXmlMarker = new("MicroDuck.SceneXml");
@@ -75,14 +76,11 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     double appliedGainRatio = double.NaN;
 
     internal bool SimulationReady => initialized && data != null && pollen != null;
-    public bool ControlReady => pollen != null && motorOutput.state == 2;
-    public bool RecoveryActive => pollen != null && (motorOutput.state == 3 || motorOutput.state == 4);
-    public bool IsFallen => pollen != null && motorOutput.fallen != 0;
+    public bool ControlReady => pollen != null && motorOutput.ControlReady;
+    public bool RecoveryActive => pollen != null && motorOutput.RecoveryActive;
+    public bool IsFallen => pollen != null && motorOutput.IsFallen;
     public float Uprightness { get; private set; } = 1f;
-    public string BehaviorState => pollen == null ? "not initialized" :
-        motorOutput.state == 0 ? "initializing" : motorOutput.state == 1 ? "homing" :
-        motorOutput.state == 3 ? "limp_fall" : motorOutput.state == 4 ? "limp_pose" :
-        motorOutput.fallen != 0 ? "recovering" : "policy";
+    public string BehaviorState => pollen == null ? "not initialized" : motorOutput.BehaviorState;
     MujocoLib.mjModel_* model;
     MujocoLib.mjData_* data;
     int rootBodyId = -1;
@@ -223,10 +221,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             pollen = new MicroDuckPollenControl(controlPolicies);
 
             surfaces = new MicroDuckSurfaces(transform);
-            var scanStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
-            using (SurfaceScanMarker.Auto())
-                surfaces.Refresh();
-            performance?.Record(MicroDuckPerformance.Timing.SurfaceScan, scanStarted);
+            ScanSurfaces();
             model = LoadNativeModel(BuildNativeSceneXml());
             ResolveModelElements();
             data = MujocoLib.mj_makeData(model);
@@ -420,17 +415,14 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         requestedCommand = Vector3.zero;
         commandUpdatedAt = double.NegativeInfinity;
         substepsSincePolicy = 0;
-        nextSurfaceRefresh = 0.25;
+        nextSurfaceRefresh = SurfaceRefreshPeriod;
         previousFrameTimestamp = 0;
-        model->opt.timestep = PhysicsPeriod;
         var gravityInAnchorUnity = transform.InverseTransformDirection(Physics.gravity);
         nativeGravity = new Vector3(
             gravityInAnchorUnity.z,
             -gravityInAnchorUnity.x,
             gravityInAnchorUnity.y);
-        model->opt.gravity[0] = nativeGravity.x;
-        model->opt.gravity[1] = nativeGravity.y;
-        model->opt.gravity[2] = nativeGravity.z;
+        ConfigurePhysics(model);
 
         data->qpos[rootQposAddress] = 0;
         data->qpos[rootQposAddress + 1] = 0;
@@ -446,17 +438,31 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         }
     }
 
+    void ConfigurePhysics(MujocoLib.mjModel_* nativeModel)
+    {
+        nativeModel->opt.timestep = PhysicsPeriod;
+        nativeModel->opt.gravity[0] = nativeGravity.x;
+        nativeModel->opt.gravity[1] = nativeGravity.y;
+        nativeModel->opt.gravity[2] = nativeGravity.z;
+    }
+
+    MicroDuckSurfaces.Change ScanSurfaces()
+    {
+        var started = performance != null ? Stopwatch.GetTimestamp() : 0;
+        MicroDuckSurfaces.Change change;
+        using (SurfaceScanMarker.Auto())
+            change = surfaces.Refresh();
+        performance?.Record(MicroDuckPerformance.Timing.SurfaceScan, started);
+        return change;
+    }
+
     // Geometry recompiles do not restart the policy or discard integration history.
     // Returns whether geometry or placement changed; pose-only updates never compile.
     public bool RefreshSurfaces()
     {
         if (!initialized)
             throw new InvalidOperationException("InitializeSimulation must be called before RefreshSurfaces.");
-        var scanStarted = performance != null ? Stopwatch.GetTimestamp() : 0;
-        MicroDuckSurfaces.Change change;
-        using (SurfaceScanMarker.Auto())
-            change = surfaces.Refresh();
-        performance?.Record(MicroDuckPerformance.Timing.SurfaceScan, scanStarted);
+        var change = ScanSurfaces();
         if (change == MicroDuckSurfaces.Change.None)
         {
             performance?.RecordSurfaceRefresh(false, 0);
@@ -514,10 +520,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
                     replacementData->xfrc_applied[replacementBody * 6 + axis] =
                         data->xfrc_applied[bodyIds[i] * 6 + axis];
             }
-            replacementModel->opt.timestep = PhysicsPeriod;
-            replacementModel->opt.gravity[0] = nativeGravity.x;
-            replacementModel->opt.gravity[1] = nativeGravity.y;
-            replacementModel->opt.gravity[2] = nativeGravity.z;
+            ConfigurePhysics(replacementModel);
             surfaces.BindNativeModel(replacementModel);
             surfaces.ApplyNativePoses(replacementData, true);
             ForwardPreservingWarmstart(replacementModel, replacementData);
@@ -535,7 +538,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         model = replacementModel;
         data = replacementData;
         ResolveModelElements();
-        ApplyGainRatio(motorOutput.torque != 0 ? motorOutput.gain / 200.0 : 0.0);
+        ApplyGainRatio(motorOutput.GainRatio);
         ApplyNativePoses();
         performance?.RecordSurfaceRefresh(true, 0);
         performance?.RecordRebuildReasons(
@@ -568,7 +571,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         if (data->time >= nextSurfaceRefresh)
         {
             RefreshSurfaces();
-            nextSurfaceRefresh = data->time + 0.25;
+            nextSurfaceRefresh = data->time + SurfaceRefreshPeriod;
         }
         for (var step = 0; step < roundedSteps; step++)
         {
@@ -615,7 +618,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
             forward = requested.x, left = requested.y, yaw_rate = requested.z
         };
         pollen.Step(ref sensors, ref velocity, checked((ulong)Math.Round(data->time * 1_000_000.0)), out motorOutput);
-        ApplyGainRatio(motorOutput.torque != 0 ? motorOutput.gain / 200.0 : 0.0);
+        ApplyGainRatio(motorOutput.GainRatio);
         fixed (double* targets = motorOutput.targets)
             for (var i = 0; i < JointCount; i++)
             {

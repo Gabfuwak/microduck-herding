@@ -30,11 +30,36 @@ internal sealed unsafe class MicroDuckPollenControl : IDisposable
         public double forward, left, yaw_rate;
     }
 
+    // Values are part of ABI 1 (microduck_control.h), not Unity lifecycle states.
+    internal enum ControlState : uint
+    {
+        Initializing = 0,
+        Homing = 1,
+        Policy = 2,
+        LimpFall = 3,
+        LimpPose = 4
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct MotorOutput
     {
         public fixed double targets[15];
-        public uint gain, torque, state, fallen;
+        public uint gain, torque;
+        public ControlState state;
+        public uint fallen;
+
+        internal bool ControlReady => state == ControlState.Policy;
+        internal bool RecoveryActive => state == ControlState.LimpFall || state == ControlState.LimpPose;
+        internal bool IsFallen => fallen != 0;
+        internal double GainRatio => torque != 0 ? gain / 200.0 : 0.0;
+        internal string BehaviorState => state switch
+        {
+            ControlState.Initializing => "initializing",
+            ControlState.Homing => "homing",
+            ControlState.LimpFall => "limp_fall",
+            ControlState.LimpPose => "limp_pose",
+            _ => IsFallen ? "recovering" : "policy"
+        };
     }
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]

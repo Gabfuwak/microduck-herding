@@ -34,6 +34,32 @@ from `NavMeshAgent.steeringTarget` relative to measured feet, independently of
 `desiredVelocity`, so a zero requested walking speed does not suppress turning.
 Translation, turn limits and acceleration limits are unchanged.
 
+## Refactor check (2026-11-01)
+
+Compared with the working `9060321` baseline, the refactor names the existing
+native ABI states and shares repeated scan/physics setup, recovery/progress
+handling and mesh serialization. Policy bytes, native binaries, tuning, prefab,
+Quest scene and input bindings are unchanged.
+
+| Check | Result |
+| --- | --- |
+| Geometry before/after refactor | Identical XML bytes, navigation sources, bounds and refresh flags across initial, unchanged, moved, reshaped and removed surfaces; rotated/nonuniform boxes and triangle meshes included |
+| Native startup, walking and forced fall | Passed in the open editor and isolated copy; same 0.32003 m forward travel and continuous clock |
+| Physical behind-goal and next goal | Isolated trial arrived after 8.32 simulation seconds and a 165 degree turn; open-editor repeat also passed |
+| Table drop with recovery | Open-editor trial fell, retained its goal, recovered and arrived upright; isolated drop arrived without requiring recovery |
+| Live room geometry changes | Pose update and size/add/remove recompiles preserved robot state bit-for-bit, controller instance, clock, gravity and timestep; next step remained finite and advanced 20 ms |
+| Quest profile from Linux Editor | Selected and switched through Unity's actual Build Profiles window; Android target/group, MainScene, IL2CPP and ARM64 confirmed |
+
+The Quest profile also produced a non-development ARM64 IL2CPP APK with zero
+build errors. Native payload and 16 KiB ELF/ZIP alignment checks passed; source
+and XR settings matched the build copy. Reports are alongside the ignored APK
+under `Builds/Android/refactor-*`. Device execution remains untested.
+
+One earlier open-editor behind-goal trial exceeded its 30 simulation-second
+bound; its later forward goal still arrived. The repeat and isolated trial passed,
+so these results establish exercised cases rather than deterministic arrival.
+Reports are under `Builds/Validation/refactor-*` and `geometry-equivalence.json`.
+
 ## Practical limits
 
 Native trace equality covers the enabled navigation configuration over the
