@@ -22,8 +22,8 @@ ray or switches away from normal UI pointing. Robot joystick mappings are unchan
 
 Hand UI lives in Assets/UI/MicroDuck and is included in MainScene:
 - MicroDuckHandMenu.prefab shares tracked anchors between two stock XRI HandMenu
-  followers. Settings appears when the left palm faces the viewer; the microphone
-  appears when the back of the hand faces the viewer.
+  followers. Settings appears when the selected palm faces the viewer; the
+  microphone appears when the back of that hand faces the viewer. Left is default.
 - MicroDuckMicrophone.prefab is a circular, hand-locked mute toggle.
   MicroDuckMicrophoneView swaps its normal/crossed-out icon and tint.
 - MicroDuckMainMenu.prefab is the viewer-facing Settings panel beside the palm.
@@ -33,17 +33,29 @@ Both canvases use TrackedDeviceGraphicRaycaster with the existing XR input rig.
 Placement, size, follow behaviour and hit-area padding are configured in the
 prefabs. Both view scripts update on value changes and reveal, not every frame.
 
-Controls change UI state only: no robot reset, environment changes, actual hand
-switching, microphone capture, speech recognition or panel expansion is connected.
-The mic starts visually unmuted. Toggle values survive hiding/revealing the menu
-instance but are not saved between app runs.
+MicroDuckHandMenuControls lives on the always-active menu root. MainScene assigns
+its spawner and ARPlaneManager references; the prefab assigns its controls/followers.
+It binds UI and plane-added events, without per-frame searches:
+- Reset robot despawns the live duck and returns to the initial placement flow.
+  Its simulation resources are released; the existing preload path prepares a new
+  hidden duck. The next placement gesture chooses its position. Before placement,
+  Reset does nothing.
+- Planes changes Renderer.forceRenderingOff on existing and newly detected AR
+  planes. Tracking, mesh generation, placement raycasts and MuJoCo collisions stay
+  active; it does not hide the physical room or desktop simulation environment.
+- Left/Right moves both UI followers to the selected hand, with mirrored offsets.
+The microphone remains visual-only: no capture, speech or expansion is connected.
+Toggle values survive hiding/revealing the menu instance, not app restarts.
 
 User-run headset check:
-- Turn the left hand to reveal each UI; check readability, clearance and hiding.
-- Try right-index pokes and ray/pinch clicks (or controller UI trigger), including
-  the Planes label. Verify visual feedback without changing the robot or room.
-- Hide/reveal after changing toggles; confirm selections remain and UI clicks do
-  not trigger world placement behind the panel.
+- Reset before placement, then after walking/falling: the duck should disappear
+  and stay absent until a new placement gesture. Place it elsewhere and repeat;
+  verify only one duck appears and sticks must return to neutral before driving.
+- Hide Planes, scan new surfaces, and verify the duck still collides with hidden
+  surfaces. Show Planes again to restore their normal tracking-dependent visibility.
+- Switch Left/Right both ways, turning the selected hand to reveal Settings/mic.
+  Use the opposite hand for pokes/ray clicks; confirm selections survive hide/reveal.
+- Check mic mute feedback and that UI clicks do not place another duck behind it.
 - Push the right stick forward and release, including after switching between
   hands and controllers: no teleport ray should appear. Check right-stick turning,
   left-stick movement, controller UI clicks and placement still work.
@@ -88,8 +100,9 @@ using the official per-axis 0.1 dead zone without rescaling. The policy controll
 smooths commands with alpha 0.2 at 50 Hz and selects standing at command magnitude
 <=0.05. SetVelocityCommand must be refreshed continuously: requests expire after
 0.5 real seconds. Release, tracking loss, focus/pause loss and disabling joystick
-input request zero velocity without disabling physical balancing. Placement resets
-command history. These are velocity requests, not guaranteed motion or drift correction.
+input request zero velocity without disabling physical balancing. Placement clears
+command history; every newly placed duck requires neutral sticks before driving.
+These are velocity requests, not guaranteed motion or drift correction.
 The current checked-in walking policy barely translates under pure lateral requests
 in the native smoke run; forward-plus-sideways does move diagonally. Do not treat
 the command limits as achieved speeds or guaranteed strafing.

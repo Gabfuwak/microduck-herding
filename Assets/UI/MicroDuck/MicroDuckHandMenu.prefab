@@ -222,6 +222,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7849841798332370682}
   - component: {fileID: 8138677379910275555}
+  - component: {fileID: 900200001}
   m_Layer: 0
   m_Name: MicroDuckHandMenu
   m_TagString: Untagged
@@ -509,3 +510,55 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 100000, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
   m_PrefabInstance: {fileID: 9000000020}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &900200001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5037594338062967475}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f25a45e4d1b496aa1bbb1c338acd75a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::MicroDuckHandMenuControls
+  m_Spawner: {fileID: 0}
+  m_PlaneManager: {fileID: 0}
+  m_ResetButton: {fileID: 900200002}
+  m_PlanesToggle: {fileID: 900200003}
+  m_RightHandToggle: {fileID: 900200004}
+  m_SettingsFollower: {fileID: 9000000012}
+  m_MicrophoneFollower: {fileID: 8138677379910275555}
+--- !u!114 &900200002 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 100354, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+  m_PrefabInstance: {fileID: 9000000020}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+--- !u!114 &900200003 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 100394, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+  m_PrefabInstance: {fileID: 9000000020}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9085046f02f69544eb97fd06b6048fe2, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Toggle
+--- !u!114 &900200004 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 100454, guid: 55c7efed5ea44124a6abb597754d767c, type: 3}
+  m_PrefabInstance: {fileID: 9000000020}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9085046f02f69544eb97fd06b6048fe2, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Toggle

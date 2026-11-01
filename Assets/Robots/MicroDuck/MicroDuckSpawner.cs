@@ -141,6 +141,17 @@ public sealed class MicroDuckSpawner : MonoBehaviour
             Debug.LogWarning("Could not spawn MicroDuck.", this);
     }
 
+    public void ResetRobot()
+    {
+        if (m_LiveDuck == null)
+            return;
+
+        m_LiveDuck.SetActive(false);
+        DestroyOwnedObject(m_LiveDuck);
+        m_LiveDuck = null;
+        // Update prepares the next duck; placement still requires the user's gesture.
+    }
+
     private void FailPreparation(System.Exception exception)
     {
         m_PreparationFailed = true;

@@ -216,10 +216,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
     public void PlacePreparedSimulation()
     {
         if (!initialized)
-            throw new InvalidOperationException("Prepare the duck before placing it.");
+            throw new InvalidOperationException("Initialize the duck before placing it.");
         ValidateAnchor();
-        // Reuse the prepared workers/model/data, but not its old anchor-relative
-        // contacts, gravity, actions or clocks. No simulation ran while hidden.
+        // Move the prepared simulation to its placement anchor without rebuilding resources.
+        // Contacts, gravity, actions and clocks belong to the new initial state.
         MujocoLib.mj_resetData(model, data);
         InitializeNativeState();
         RefreshSurfaces();
