@@ -143,6 +143,10 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
 
     public Transform Trunk { get; private set; }
 
+    // Reports the selected locomotion policy, not measured speed or fall detection.
+    public string LocomotionState => !initialized ? "Unavailable" : WalkingCommand ? "Walking" : "Standing";
+    bool WalkingCommand => command.sqrMagnitude > StandingThreshold * StandingThreshold;
+
     public Vector3 FootMidpoint
     {
         get
@@ -635,9 +639,7 @@ public sealed unsafe class MicroDuckPolicyController : MonoBehaviour
         input[48] = command.x;
         input[49] = command.y;
         input[50] = command.z;
-        var output = RunPolicy(command.sqrMagnitude > StandingThreshold * StandingThreshold
-            ? walkingWorker
-            : standingWorker);
+        var output = RunPolicy(WalkingCommand ? walkingWorker : standingWorker);
         var actions = output.AsReadOnlyNativeArray();
         for (var i = 0; i < JointCount; i++)
             if (float.IsNaN(actions[i]) || float.IsInfinity(actions[i]))

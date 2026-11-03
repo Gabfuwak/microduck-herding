@@ -24,21 +24,31 @@ ray or switches away from normal UI pointing. Robot joystick mappings are unchan
 
 Hand UI lives in Assets/UI/MicroDuck and is included in MainScene:
 - MicroDuckHandMenu.prefab shares tracked anchors between two stock XRI HandMenu
-  followers. Settings appears when the selected palm faces the viewer; the
-  microphone appears when the back of that hand faces the viewer. Left is default.
+  followers. The window selector/stack appears when the selected palm faces the
+  viewer; the microphone appears on the back of that hand. Left is default.
 - MicroDuckMicrophone.prefab is a circular, hand-locked mute toggle.
   MicroDuckMicrophoneView swaps its normal/crossed-out icon and tint.
-- MicroDuckMainMenu.prefab is the viewer-facing Settings panel beside the palm.
-  It uses standard Go there and Reset Buttons and a Left/Right ToggleGroup;
+- MicroDuckMainMenu.prefab has independent Camera, Settings and State window
+  toggles in a vertical selector to the left. Settings starts open; Camera and
+  State start closed. Closing a window clears its toggle; all three may be open,
+  or all closed without hiding the selector. A stock VerticalLayoutGroup and
+  ContentSizeFitter center only the visible windows at the original menu position,
+  in Camera / Settings / State order, with no gaps for closed windows.
+  Settings retains Go there, Reset, Planes, Follow me and Left/Right controls;
   MicroDuckSwitchView updates the Planes and Follow me toggles' visuals.
+- Camera is a static PNG preview, not a live feed. State displays the controller's
+  Standing/Walking policy selection, Unavailable when the simulation is stopped,
+  or Not placed without a duck. This is not physical speed/fall telemetry.
+  Distance, latency and link stay as dash placeholders, with no fabricated readings.
 Both canvases use TrackedDeviceGraphicRaycaster with the existing XR input rig.
 Placement, size, follow behaviour and hit-area padding are configured in the
 prefabs. Both view scripts update on value changes and reveal, not every frame.
 
 MicroDuckHandMenuControls lives on the always-active menu root. MainScene assigns
 its spawner and ARPlaneManager references; the prefab assigns its controls/followers.
-It binds UI and plane-added events and reflects follow state each LateUpdate,
-using the spawner's cached navigator rather than per-frame component searches:
+It binds UI and plane-added events, reflects follow state each LateUpdate, and
+updates the State label only when visible and changed. The spawner caches the
+live navigator/controller; the UI does not search for components each frame:
 - Go there is available before and after spawning. It cancels the current route
   or Follow me immediately, then arms one shared spawn-or-navigate request.
   Enabling Follow me exits aiming instead.
@@ -102,6 +112,14 @@ User-run headset check:
   surfaces. Show Planes again to restore their normal tracking-dependent visibility.
 - Switch Left/Right both ways, turning the selected hand to reveal Settings/mic.
   Use the opposite hand for pokes/ray clicks; confirm selections survive hide/reveal.
+- Open Camera, Settings and State together. Verify their top-to-bottom order,
+  then close each using both its selector toggle and its X. Check one-window and
+  two-window combinations remain centered where Settings originally appeared,
+  without empty slots. Close all three: the selector must remain usable.
+- Hide/reveal the hand menu and switch hands: window selections should survive.
+  State should show Not placed before spawning/after Reset, Standing while idle,
+  and Walking while the walking policy runs. Camera stays a static preview and
+  the other State values stay dashes. Closing Settings must not stop Follow me.
 - Click the microphone circle: its icon/tint should toggle without recording,
   requesting permission or affecting the robot. UI clicks must not place another
   duck behind the menu.

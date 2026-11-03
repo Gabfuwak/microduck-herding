@@ -9,6 +9,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
 
     private GameObject m_LiveDuck;
     private MicroDuckNavigator m_LiveNavigator;
+    private MicroDuckPolicyController m_LiveController;
     private GameObject m_PreparedRoot;
     private GameObject m_PreparedDuck;
     private MicroDuckPolicyController m_PreparedController;
@@ -19,6 +20,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
     public bool IsFollowing => m_LiveNavigator != null && m_LiveNavigator.IsFollowing;
     public bool IsTargeting { get; private set; } = true;
     public bool TargetWithLeftHand { get; set; }
+    public string RobotState => m_LiveController != null ? m_LiveController.LocomotionState : "Not placed";
 
     public Camera cameraToFace
     {
@@ -137,6 +139,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
             duck.transform.SetParent(null, true);
             m_LiveDuck = duck;
             m_LiveNavigator = navigator;
+            m_LiveController = m_PreparedController;
             m_PreparedDuck = null;
             m_PreparedController = null;
             m_PreparedRoot = null;
@@ -193,6 +196,7 @@ public sealed class MicroDuckSpawner : MonoBehaviour
         DestroyOwnedObject(m_LiveDuck);
         m_LiveDuck = null;
         m_LiveNavigator = null;
+        m_LiveController = null;
         // Update prepares the next duck; placement still requires the user's gesture.
     }
 

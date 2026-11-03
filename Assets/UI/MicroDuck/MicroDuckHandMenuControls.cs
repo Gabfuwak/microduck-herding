@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
@@ -17,6 +18,17 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
     [SerializeField] private HandMenu m_SettingsFollower;
     [SerializeField] private HandMenu m_MicrophoneFollower;
 
+    [SerializeField] private GameObject m_SettingsWindow;
+    [SerializeField] private GameObject m_CameraWindow;
+    [SerializeField] private GameObject m_DetailsWindow;
+    [SerializeField] private Toggle m_SettingsWindowToggle;
+    [SerializeField] private Toggle m_CameraWindowToggle;
+    [SerializeField] private Toggle m_DetailsWindowToggle;
+    [SerializeField] private Button m_CloseSettingsButton;
+    [SerializeField] private Button m_CloseCameraButton;
+    [SerializeField] private Button m_CloseDetailsButton;
+    [SerializeField] private TMP_Text m_StateText;
+
     private readonly List<Renderer> m_PlaneRenderers = new();
 
     private void OnEnable()
@@ -30,6 +42,15 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
         SetRightHand(m_RightHandToggle.isOn);
         RefreshFollowToggle();
         m_FollowToggle.onValueChanged.AddListener(SetFollowing);
+        m_SettingsWindowToggle.onValueChanged.AddListener(SetSettingsVisible);
+        m_CameraWindowToggle.onValueChanged.AddListener(SetCameraVisible);
+        m_DetailsWindowToggle.onValueChanged.AddListener(SetDetailsVisible);
+        m_CloseSettingsButton.onClick.AddListener(CloseSettings);
+        m_CloseCameraButton.onClick.AddListener(CloseCamera);
+        m_CloseDetailsButton.onClick.AddListener(CloseDetails);
+        SetSettingsVisible(m_SettingsWindowToggle.isOn);
+        SetCameraVisible(m_CameraWindowToggle.isOn);
+        SetDetailsVisible(m_DetailsWindowToggle.isOn);
     }
 
     private void OnDisable()
@@ -40,9 +61,41 @@ public sealed class MicroDuckHandMenuControls : MonoBehaviour
         m_RightHandToggle.onValueChanged.RemoveListener(SetRightHand);
         m_FollowToggle.onValueChanged.RemoveListener(SetFollowing);
         m_PlaneManager.trackablesChanged.RemoveListener(OnPlanesChanged);
+        m_SettingsWindowToggle.onValueChanged.RemoveListener(SetSettingsVisible);
+        m_CameraWindowToggle.onValueChanged.RemoveListener(SetCameraVisible);
+        m_DetailsWindowToggle.onValueChanged.RemoveListener(SetDetailsVisible);
+        m_CloseSettingsButton.onClick.RemoveListener(CloseSettings);
+        m_CloseCameraButton.onClick.RemoveListener(CloseCamera);
+        m_CloseDetailsButton.onClick.RemoveListener(CloseDetails);
     }
 
-    private void LateUpdate() => RefreshFollowToggle();
+    private void LateUpdate()
+    {
+        RefreshFollowToggle();
+        if (m_DetailsWindow.activeInHierarchy)
+            RefreshState();
+    }
+
+    private void SetSettingsVisible(bool visible) => m_SettingsWindow.SetActive(visible);
+    private void SetCameraVisible(bool visible) => m_CameraWindow.SetActive(visible);
+
+    private void SetDetailsVisible(bool visible)
+    {
+        m_DetailsWindow.SetActive(visible);
+        if (visible)
+            RefreshState();
+    }
+
+    private void CloseSettings() => m_SettingsWindowToggle.isOn = false;
+    private void CloseCamera() => m_CameraWindowToggle.isOn = false;
+    private void CloseDetails() => m_DetailsWindowToggle.isOn = false;
+
+    private void RefreshState()
+    {
+        var state = m_Spawner.RobotState;
+        if (m_StateText.text != state)
+            m_StateText.text = state;
+    }
 
     private void RefreshFollowToggle()
     {
