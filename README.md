@@ -1,5 +1,3 @@
-# Tangible AR interaction for robots
-
 ![Microduck control](./docs/Microduck%20control.png)
 
 Team members: Gabin Maury, Tristan Mallétroit, André Dal Bosco
@@ -72,3 +70,12 @@ Third party code and assets were essential to allow a practical implementation o
 - robotd: [Pollen’s robot software](https://github.com/pollen-robotics/microduck).
 
 ## Screenshots
+
+
+<img width="1137" height="838" alt="image" src="https://github.com/user-attachments/assets/cf14f90d-b57f-48f3-945a-444f17e833bf" />
+<img width="811" height="584" alt="image" src="https://github.com/user-attachments/assets/4c083fef-3eb0-44f9-90a8-38fa24b20f5c" />
+<img width="831" height="729" alt="image" src="https://github.com/user-attachments/assets/ef2d6f65-5c0c-44d7-9377-21f5005f16b3" />
+<img width="1264" height="781" alt="image" src="https://github.com/user-attachments/assets/1c0be749-9419-4b8a-87b3-aa3580ece304" />
+<img width="1403" height="888" alt="image" src="https://github.com/user-attachments/assets/8a868967-8701-4228-b705-0289479f0a30" />
+
+
